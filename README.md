@@ -8,7 +8,7 @@ Dieses Repository ist ein Ausgangspunkt für Projekte mit Next.js (App Router), 
 
 ```bash
 make setup        # erstellt .env per dev-Defaults
-docker compose --profile dev up -d
+make dev          # startet db + web-dev + Mailpit + pgAdmin
 ```
 
 ---
@@ -28,12 +28,14 @@ docker compose --profile dev up -d
    sudo apt update
    sudo apt install build-essential   # enthält make
    ```
-2. `.env` per Setup-Skript erzeugen:
+2. `.env` per Setup-Skript erzeugen (und anschließend Stack starten):
    ```bash
-   make setup        # dev
-   make setup-prod   # prod
-   # oder direkt:
-   node scripts/setup-env.cjs --scope prod
+   make setup        # dev (.env + optionaler Remote-Switch)
+   make dev          # startet lokale Container (Alias für docker compose --profile dev up -d)
+
+   make setup-prod   # prod (.env + Remote-Switch + Server-Check)
+   make prod         # startet Prod-Stack (Alias für docker compose --profile prod up -d --build)
+   # Prod + n8n: make prod-n8n
    ```
    Das Skript liest `env.template`, berücksichtigt die `# @meta { ... }` Blöcke und fragt nur Variablen ab, deren `scopes` (`dev` oder `prod`) zum gewünschten Profil passen. Enter übernimmt den Default/Placeholder, ein einzelner Punkt `.` setzt den Wert leer. Nach dem Setup wird optional automatisch `NEW_REMOTE_URL` aus der `.env` gezogen und via `make switch-remote` gesetzt. Bei `make setup-prod` wird zusätzlich `scripts/check-server-tools.sh` aufgerufen: dieses prüft Docker, Docker Compose, Git sowie Node.js/npm und versucht fehlende Pakete (apt/brew) zu installieren. Auf Servern deshalb mit passenden Rechten (sudo) ausführen.
 3. Die wichtigsten Variablen im Überblick:
@@ -82,7 +84,7 @@ Standardmäßig laufen alle Dienste nur auf dem internen Docker-Netzwerk bzw. au
 ### Ohne n8n (schnellster Start)
 
 ```bash
-docker compose --profile dev up -d
+make dev
 ```
 
 - Öffne `http://localhost:3000`
@@ -92,10 +94,7 @@ docker compose --profile dev up -d
 ### Mit n8n
 
 ```bash
-docker compose \
-  --profile dev \
-  --profile n8n \
-  up -d
+make dev-n8n
 ```
 
 - n8n läuft auf `http://localhost:5678` (Basic Auth aus `.env`)
@@ -137,21 +136,18 @@ docker compose --profile dev down
 ### Start ohne n8n
 
 ```bash
-docker compose --profile prod up -d --build
+make prod
 ```
 
-- Caddy stellt automatisch Zertifikate über Let's Encrypt aus und leitet Port 80/443 auf die internen Dienste weiter.
+- Entspricht `docker compose --profile prod up -d --build`. Caddy stellt automatisch Zertifikate über Let's Encrypt aus und leitet Port 80/443 auf die internen Dienste weiter.
 
 ### Start mit n8n
 
 ```bash
-docker compose \
-  --profile prod \
-  --profile n8n \
-  up -d --build
+make prod-n8n
 ```
 
-- Caddy erzeugt zusätzlich ein Zertifikat für `N8N_DOMAIN` und proxyt Anfragen an den n8n-Container.
+- Entspricht `docker compose --profile prod --profile n8n up -d --build`. Caddy erzeugt zusätzlich ein Zertifikat für `N8N_DOMAIN` und proxyt Anfragen an den n8n-Container.
 
 ### HTTPS-Automatisierung (Caddy)
 
