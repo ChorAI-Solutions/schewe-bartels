@@ -1,9 +1,11 @@
-.PHONY: help pull dev dev-n8n dev-down dev-restart dev-logs env-dev rebuild-dev prod prod-n8n prod-down prod-restart prod-logs env-prod rebuild-prod n8n-logs update-n8n lint type format studio migrate
+.PHONY: help pull dev dev-n8n dev-down dev-restart dev-logs env-dev rebuild-dev prod prod-n8n prod-down prod-restart prod-logs env-prod rebuild-prod n8n-logs update-n8n lint type format studio migrate switch-remote
 
 COMPOSE ?= docker compose
 DEV_PROFILES := --profile dev
 PROD_PROFILES := --profile prod
 N8N_PROFILE := --profile n8n
+REMOTE_NAME ?= origin
+NEW_REMOTE_URL ?=
 
 help:
 	@echo "Verfügbare Targets:"
@@ -23,6 +25,7 @@ help:
 	@echo "  make rebuild-prod  - Baut web ohne Cache neu und startet das prod-Profil"
 	@echo "  make n8n-logs      - Folgt den Logs von n8n (falls gestartet)"
 	@echo "  make update-n8n    - Holt das neueste n8n-Image und startet den Container neu"
+	@echo "  make switch-remote - Verknüpft das Repo mit NEW_REMOTE_URL (REMOTE_NAME=origin)"
 	@echo "  make pull          - Führt git pull für den aktuellen Branch aus"
 	@echo "  make lint          - Führt npm run lint im web-dev Container aus"
 	@echo "  make type          - Führt npm run type-check im web-dev Container aus"
@@ -99,3 +102,12 @@ studio:
 migrate:
 	$(COMPOSE) exec web-dev npx prisma migrate deploy --schema=prisma/schema.prisma
 
+switch-remote:
+	@[ -n "$(strip $(NEW_REMOTE_URL))" ] || (echo "Bitte NEW_REMOTE_URL angeben, z. B. make switch-remote NEW_REMOTE_URL=git@github.com:user/repo.git"; exit 1)
+	@if git remote | grep -qx "$(REMOTE_NAME)"; then \
+		echo "Entferne bestehendes Remote '$(REMOTE_NAME)'"; \
+		git remote remove $(REMOTE_NAME); \
+	fi
+	@git remote add $(REMOTE_NAME) $(NEW_REMOTE_URL)
+	@echo "Remote '$(REMOTE_NAME)' zeigt jetzt auf $(NEW_REMOTE_URL)"
+	@git remote -v
