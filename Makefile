@@ -1,4 +1,4 @@
-.PHONY: help pull dev dev-n8n dev-down dev-restart dev-logs env-dev rebuild-dev prod prod-n8n prod-down prod-restart prod-logs env-prod rebuild-prod n8n-logs update-n8n lint type format studio migrate setup setup-dev setup-prod setup-env post-setup switch-remote
+.PHONY: help pull dev dev-n8n dev-down dev-restart dev-logs env-dev rebuild-dev prod prod-n8n prod-down prod-restart prod-logs env-prod rebuild-prod n8n-logs update-n8n lint type format studio migrate setup setup-dev setup-prod setup-env post-setup switch-remote bootstrap-remote
 
 COMPOSE ?= docker compose
 DEV_PROFILES := --profile dev
@@ -7,6 +7,7 @@ N8N_PROFILE := --profile n8n
 REMOTE_NAME ?= origin
 SETUP_SCRIPT ?= node scripts/setup-env.cjs
 SERVER_CHECK_SCRIPT ?= bash scripts/check-server-tools.sh
+GIT_BOOTSTRAP_SCRIPT ?= bash scripts/git-bootstrap.sh
 
 help:
 	@echo "Verfügbare Targets:"
@@ -63,6 +64,7 @@ post-setup:
 		if [ -n "$$NEW_REMOTE_URL" ]; then \
 			echo "➡️  NEW_REMOTE_URL erkannt: $$NEW_REMOTE_URL"; \
 			$(MAKE) switch-remote NEW_REMOTE_URL="$$NEW_REMOTE_URL"; \
+			$(MAKE) bootstrap-remote; \
 		else \
 			echo "ℹ️  Keine NEW_REMOTE_URL gesetzt – überspringe switch-remote."; \
 		fi \
@@ -145,4 +147,7 @@ switch-remote:
 	@git remote add $(REMOTE_NAME) $(NEW_REMOTE_URL)
 	@echo "Remote '$(REMOTE_NAME)' zeigt jetzt auf $(NEW_REMOTE_URL)"
 	@git remote -v
+
+bootstrap-remote:
+	@$(GIT_BOOTSTRAP_SCRIPT) $(REMOTE_NAME)
 

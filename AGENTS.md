@@ -15,7 +15,7 @@ Dieser Leitfaden zeigt dir, wie du in diesem Projekt schrittweise einen Chat‑A
 - `make setup-prod`: produktive Werte mit TLS-/Domain-Feldern (`scope=prod`). Auf frischen Servern zuerst `sudo apt update && sudo apt install build-essential` ausführen, danach übernimmt `scripts/check-server-tools.sh` die Prüfung auf Docker, Compose, Git und Node.js/npm.
 - `make setup-env scope=prod`: falls du dynamisch zwischen Scopes wechseln willst (bei Scope `prod` läuft ebenfalls der Dependency-Check nach der manuellen build-essential-Installation).
 - Das Skript `scripts/setup-env.cjs` liest die `# @meta { ... }` Blöcke in `env.template`, schlägt pro Scope Defaults vor und schreibt `.env`. Enter übernimmt den Vorschlag, `.` setzt den Wert leer.
-- Nach dem Setup prüft `post-setup`, ob `NEW_REMOTE_URL` gesetzt ist, und ruft bei Bedarf `make switch-remote NEW_REMOTE_URL=…` auf, um das Git-Remote automatisch umzustellen.
+- Nach dem Setup prüft `post-setup`, ob `NEW_REMOTE_URL` gesetzt ist, und ruft bei Bedarf `make switch-remote NEW_REMOTE_URL=…` auf, um das Git-Remote automatisch umzustellen. Direkt danach sorgt `scripts/git-bootstrap.sh` dafür, dass `git config user.name`/`user.email` gesetzt sind, der Branch `main` heißt und `git push -u origin main` ausgeführt wird.
 
 ## Sicherheits‑Basics
 - Admin‑Endpoints (z. B. `/api/admin/*` und `/api/webhooks/n8n`) sind per Header `X-Admin-Token` geschützt.
