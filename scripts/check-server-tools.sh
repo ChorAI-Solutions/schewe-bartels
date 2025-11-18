@@ -117,6 +117,23 @@ ensure_node_stack() {
   fi
 }
 
+ensure_make() {
+  if command -v make >/dev/null 2>&1; then
+    log "make gefunden ($(make --version 2>/dev/null | head -n1))."
+    return
+  fi
+
+  log "make fehlt – versuche Installation."
+  if [[ "$PKG_MANAGER" == "apt" ]]; then
+    apt_install build-essential
+  elif [[ "$PKG_MANAGER" == "brew" ]]; then
+    brew_install make
+  else
+    warn "Bitte installiere make manuell (z. B. via build-essential)."
+    exit 1
+  fi
+}
+
 log "Prüfe Systemvoraussetzungen für Scope '${SCOPE}'."
 log "Erkanntes System: ${OS}, Paketverwaltung: ${PKG_MANAGER:-unbekannt}"
 
@@ -124,6 +141,7 @@ ensure_git
 ensure_node_stack
 ensure_docker
 ensure_docker_compose
+ensure_make
 
 log "Alle Abhängigkeiten vorhanden."
 
