@@ -9,10 +9,23 @@ export default function Home() {
       <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
         <h2 className="text-lg font-medium mb-2">Nächste Schritte</h2>
         <ol className="list-decimal ml-5 space-y-1 text-sm">
-          <li>.env anlegen und Docker starten</li>
+          <li>
+            <code>make setup</code> ausführen und danach Docker starten
+          </li>
           <li>Health‑Check: /api/health</li>
           <li>Admin‑Ping: /api/admin/ping mit X-Admin-Token</li>
         </ol>
+      </div>
+      <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <h2 className="text-lg font-medium mb-2">Quickstart</h2>
+        <pre className="bg-zinc-950 text-zinc-100 text-sm p-3 rounded-md overflow-x-auto">
+{`make setup
+docker compose --profile dev up -d`}
+        </pre>
+        <p className="text-xs text-zinc-500 mt-2">
+          Das Setup-Skript nutzt die <code>env.template</code> mit ihren <code># @meta</code>-Blöcken,
+          schlägt dir Defaults vor und startet danach den optionalen Remote-Switch.
+        </p>
       </div>
     </div>
   );

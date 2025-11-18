@@ -4,6 +4,15 @@ Dieses Repository ist ein Ausgangspunkt für Projekte mit Next.js (App Router), 
 
 ---
 
+## Quickstart
+
+```bash
+make setup        # erstellt .env per dev-Defaults
+docker compose --profile dev up -d
+```
+
+---
+
 ## 1. Voraussetzungen
 
 - Docker Desktop (Windows/macOS) oder Docker Engine (Linux)
@@ -14,7 +23,14 @@ Dieses Repository ist ein Ausgangspunkt für Projekte mit Next.js (App Router), 
 
 ## 2. Konfiguration (`.env`)
 
-1. `env.example` kopieren und als `.env` speichern.
+1. `.env` per Setup-Skript erzeugen:
+   ```bash
+   make setup        # dev
+   make setup-prod   # prod
+   # oder direkt:
+   node scripts/setup-env.cjs --scope prod
+   ```
+   Das Skript liest `env.template`, berücksichtigt die `# @meta { ... }` Blöcke und fragt nur Variablen ab, deren `scopes` (`dev` oder `prod`) zum gewünschten Profil passen. Enter übernimmt den Default/Placeholder, ein einzelner Punkt `.` setzt den Wert leer. Nach dem Setup wird optional automatisch `NEW_REMOTE_URL` aus der `.env` gezogen und via `make switch-remote` gesetzt.
 2. Die wichtigsten Variablen im Überblick:
    - **Allgemein**: `NODE_ENV`, `NEXT_PUBLIC_SITE_URL` (öffentliche URL des Frontends), `SITE_DOMAIN` (Domain ohne Schema, für TLS), `ADMIN_TOKEN`, `COMPOSE_PROFILES` (z. B. `dev` lokal oder `prod,n8n` auf dem Server), optional `AUTH_DISABLED=true` nur lokal.
    - **TLS**: `ACME_EMAIL` (Empfänger für Let's-Encrypt-Benachrichtigungen).
@@ -23,6 +39,7 @@ Dieses Repository ist ein Ausgangspunkt für Projekte mit Next.js (App Router), 
    - **PgAdmin/Mailpit**: Zugangsdaten und SMTP-Port kannst du bei Bedarf anpassen.
 3. Production-Domains direkt eintragen (z. B. `https://ai-test.dakatos.online`).
 4. Für lokale Entwicklung kannst du `NEXT_PUBLIC_SITE_URL=http://localhost:3000` und `AUTH_DISABLED=true` setzen.
+5. Eigene Variablen ergänzen: Im `env.template` oberhalb jeder Variable einen `# @meta` Block mit `description`, `scopes` und optional `defaults` pro Scope hinzufügen – das Setup-Skript erkennt diese automatisch.
 
 Tipp: Du kannst mehrere `.env`-Dateien verwalten (z. B. `.env.dev`, `.env.prod`) und vor dem Start die passende Datei nach `.env` kopieren oder via `env_file:` in separaten Compose-Overrides referenzieren.
 
@@ -37,6 +54,13 @@ Tipp: Du kannst mehrere `.env`-Dateien verwalten (z. B. `.env.dev`, `.env.prod
 | `n8n`  | `n8n`                                        | Optionaler Start von n8n (kann mit jedem Profil kombiniert werden) |
 
 Standardmäßig laufen alle Dienste nur auf dem internen Docker-Netzwerk bzw. auf `127.0.0.1`. Für HTTP(S)-Zugriff in Produktion empfiehlt sich ein Reverse Proxy (z. B. nginx; siehe unten).
+
+### Setup-Befehle
+
+- `make setup` / `make setup-dev`: erstellt `.env` mit den dev-Defaults.
+- `make setup-prod`: generiert `.env` für produktive Werte.
+- `make setup-env scope=prod`: frei wählbarer Scope (`dev` oder `prod`), auch via `SETUP_ENV_SCOPE=prod make setup-env`.
+- Nach jedem Setup läuft automatisch `make post-setup`. Falls in `.env` eine `NEW_REMOTE_URL` gesetzt wurde, wird das Git-Remote `origin` darauf aktualisiert (`switch-remote`). Leer lassen, wenn nichts umgehängt werden soll.
 
 ### Dienste & Ports
 

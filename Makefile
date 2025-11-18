@@ -1,4 +1,4 @@
-.PHONY: help pull dev dev-n8n dev-down dev-restart dev-logs env-dev rebuild-dev prod prod-n8n prod-down prod-restart prod-logs env-prod rebuild-prod n8n-logs update-n8n lint type format studio migrate switch-remote
+.PHONY: help pull setup setup-dev setup-prod setup-env post-setup dev dev-n8n dev-down dev-restart dev-logs env-dev rebuild-dev prod prod-n8n prod-down prod-restart prod-logs env-prod rebuild-prod n8n-logs update-n8n lint type format studio migrate switch-remote
 
 COMPOSE ?= docker compose
 DEV_PROFILES := --profile dev
@@ -6,9 +6,15 @@ PROD_PROFILES := --profile prod
 N8N_PROFILE := --profile n8n
 REMOTE_NAME ?= origin
 NEW_REMOTE_URL ?=
+SETUP_SCRIPT := node scripts/setup-env.cjs
 
 help:
 	@echo "Verfügbare Targets:"
+	@echo "  make setup         - Alias für setup-dev"
+	@echo "  make setup-dev     - Führt scripts/setup-env.cjs mit Scope dev aus"
+	@echo "  make setup-prod    - Führt scripts/setup-env.cjs mit Scope prod aus"
+	@echo "  make setup-env     - Setup mit Scope aus Variable scope=dev|prod"
+	@echo "  make post-setup    - Liest .env und setzt optional NEW_REMOTE_URL"
 	@echo "  make dev           - Startet das dev-Profil ohne n8n (Hot-Reload, Mailpit, pgAdmin)"
 	@echo "  make dev-n8n       - Startet dev + n8n Profile gemeinsam"
 	@echo "  make dev-down      - Stoppt das dev-Profil"
@@ -35,6 +41,37 @@ help:
 
 pull:
 	git pull
+
+setup: setup-dev
+
+setup-dev:
+	@SETUP_ENV_SCOPE=dev $(SETUP_SCRIPT)
+	@$(MAKE) --no-print-directory post-setup
+
+setup-prod:
+	@SETUP_ENV_SCOPE=prod $(SETUP_SCRIPT)
+	@$(MAKE) --no-print-directory post-setup
+
+setup-env:
+	@scope_value=$${scope:-$${SCOPE:-$${SETUP_ENV_SCOPE:-dev}}}; \
+		echo "Nutze Scope: $$scope_value"; \
+		SETUP_ENV_SCOPE=$$scope_value $(SETUP_SCRIPT)
+	@$(MAKE) --no-print-directory post-setup
+
+post-setup:
+	@if [ ! -f .env ]; then \
+		echo ".env nicht gefunden – bitte make setup ausführen."; \
+	elif grep -qE "^NEW_REMOTE_URL=" .env; then \
+		NEW_REMOTE=$$(grep -E "^NEW_REMOTE_URL=" .env | tail -1 | cut -d'=' -f2-); \
+		if [ -n "$$NEW_REMOTE" ]; then \
+			echo "Setze Git-Remote auf $$NEW_REMOTE"; \
+			$(MAKE) --no-print-directory switch-remote NEW_REMOTE_URL=$$NEW_REMOTE; \
+		else \
+			echo "NEW_REMOTE_URL nicht gesetzt – überspringe Remote-Anpassung."; \
+		fi; \
+	else \
+		echo "NEW_REMOTE_URL nicht gefunden – keine Aktion notwendig."; \
+	fi
 
 dev:
 	$(COMPOSE) $(DEV_PROFILES) up -d

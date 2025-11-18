@@ -3,12 +3,19 @@
 Dieser Leitfaden zeigt dir, wie du in diesem Projekt schrittweise einen Chat‑Agent (später Voice‑Agent) baust und n8n einbindest. Alles ist für Windows, macOS und Linux vorbereitet.
 
 ## Voraussetzungen
-- Repo geklont, `.env` ausgefüllt (siehe `README.md` und `env.example`)
+- Repo geklont, `.env` via `make setup` erstellt (Vorlage & Meta-Daten: `env.template`)
 - Stack läuft: `docker compose up -d --build`
 - Erreichbar:
   - Web: `http://localhost:3000`
   - n8n: `http://localhost:5678` (Basic‑Auth aus `.env`)
   - Mail‑UI: `http://localhost:8025`
+
+### Setup-Workflow
+- `make setup` / `make setup-dev`: lokale Defaults (Scope `dev`).
+- `make setup-prod`: produktive Werte mit TLS-/Domain-Feldern (`scope=prod`).
+- `make setup-env scope=prod`: falls du dynamisch zwischen Scopes wechseln willst.
+- Das Skript `scripts/setup-env.cjs` liest die `# @meta { ... }` Blöcke in `env.template`, schlägt pro Scope Defaults vor und schreibt `.env`. Enter übernimmt den Vorschlag, `.` setzt den Wert leer.
+- Nach dem Setup prüft `post-setup`, ob `NEW_REMOTE_URL` gesetzt ist, und ruft bei Bedarf `make switch-remote NEW_REMOTE_URL=…` auf, um das Git-Remote automatisch umzustellen.
 
 ## Sicherheits‑Basics
 - Admin‑Endpoints (z. B. `/api/admin/*` und `/api/webhooks/n8n`) sind per Header `X-Admin-Token` geschützt.
