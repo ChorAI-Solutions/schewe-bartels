@@ -12,8 +12,8 @@ Dieser Leitfaden zeigt dir, wie du in diesem Projekt schrittweise einen Chat‑A
 
 ### Setup-Workflow
 - `make setup` / `make setup-dev`: lokale Defaults (Scope `dev`).
-- `make setup-prod`: produktive Werte mit TLS-/Domain-Feldern (`scope=prod`) und vorgelagerter Server-Prüfung via `scripts/check-server-tools.sh` (Docker, Compose, Git, Node.js/npm, make/build-essential).
-- `make setup-env scope=prod`: falls du dynamisch zwischen Scopes wechseln willst (bei Scope `prod` läuft ebenfalls der Dependency-Check).
+- `make setup-prod`: produktive Werte mit TLS-/Domain-Feldern (`scope=prod`). Auf frischen Servern zuerst `sudo apt update && sudo apt install build-essential` ausführen, danach übernimmt `scripts/check-server-tools.sh` die Prüfung auf Docker, Compose, Git und Node.js/npm.
+- `make setup-env scope=prod`: falls du dynamisch zwischen Scopes wechseln willst (bei Scope `prod` läuft ebenfalls der Dependency-Check nach der manuellen build-essential-Installation).
 - Das Skript `scripts/setup-env.cjs` liest die `# @meta { ... }` Blöcke in `env.template`, schlägt pro Scope Defaults vor und schreibt `.env`. Enter übernimmt den Vorschlag, `.` setzt den Wert leer.
 - Nach dem Setup prüft `post-setup`, ob `NEW_REMOTE_URL` gesetzt ist, und ruft bei Bedarf `make switch-remote NEW_REMOTE_URL=…` auf, um das Git-Remote automatisch umzustellen.
 

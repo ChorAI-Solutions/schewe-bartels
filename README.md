@@ -23,15 +23,20 @@ docker compose --profile dev up -d
 
 ## 2. Konfiguration (`.env`)
 
-1. `.env` per Setup-Skript erzeugen:
+1. (Nur frische Linux-Server) Make sicherstellen:
+   ```bash
+   sudo apt update
+   sudo apt install build-essential   # enthält make
+   ```
+2. `.env` per Setup-Skript erzeugen:
    ```bash
    make setup        # dev
    make setup-prod   # prod
    # oder direkt:
    node scripts/setup-env.cjs --scope prod
    ```
-   Das Skript liest `env.template`, berücksichtigt die `# @meta { ... }` Blöcke und fragt nur Variablen ab, deren `scopes` (`dev` oder `prod`) zum gewünschten Profil passen. Enter übernimmt den Default/Placeholder, ein einzelner Punkt `.` setzt den Wert leer. Nach dem Setup wird optional automatisch `NEW_REMOTE_URL` aus der `.env` gezogen und via `make switch-remote` gesetzt. Bei `make setup-prod` wird zusätzlich `scripts/check-server-tools.sh` aufgerufen: dieses prüft Docker, Docker Compose, Git, Node.js/npm sowie `make` und versucht fehlende Pakete (apt/brew) zu installieren (auf Ubuntu inkl. `sudo apt update` + `sudo apt install build-essential`). Auf Servern deshalb mit passenden Rechten (sudo) ausführen.
-2. Die wichtigsten Variablen im Überblick:
+   Das Skript liest `env.template`, berücksichtigt die `# @meta { ... }` Blöcke und fragt nur Variablen ab, deren `scopes` (`dev` oder `prod`) zum gewünschten Profil passen. Enter übernimmt den Default/Placeholder, ein einzelner Punkt `.` setzt den Wert leer. Nach dem Setup wird optional automatisch `NEW_REMOTE_URL` aus der `.env` gezogen und via `make switch-remote` gesetzt. Bei `make setup-prod` wird zusätzlich `scripts/check-server-tools.sh` aufgerufen: dieses prüft Docker, Docker Compose, Git sowie Node.js/npm und versucht fehlende Pakete (apt/brew) zu installieren. Auf Servern deshalb mit passenden Rechten (sudo) ausführen.
+3. Die wichtigsten Variablen im Überblick:
    - **Allgemein**: `NODE_ENV`, `NEXT_PUBLIC_SITE_URL` (öffentliche URL des Frontends), `SITE_DOMAIN` (Domain ohne Schema, für TLS), `ADMIN_TOKEN`, `COMPOSE_PROFILES` (z. B. `dev` lokal oder `prod,n8n` auf dem Server), optional `AUTH_DISABLED=true` nur lokal.
    - **TLS**: `ACME_EMAIL` (Empfänger für Let's-Encrypt-Benachrichtigungen).
    - **Datenbank**: `POSTGRES_USER`, `POSTGRES_DB`, `POSTGRES_PASSWORD`, `DATABASE_URL` (muss zu den obigen Werten passen).
@@ -58,7 +63,7 @@ Standardmäßig laufen alle Dienste nur auf dem internen Docker-Netzwerk bzw. au
 ### Setup-Befehle
 
 - `make setup` / `make setup-dev`: erstellt `.env` mit den dev-Defaults.
-- `make setup-prod`: generiert `.env` für produktive Werte.
+- `make setup-prod`: generiert `.env` für produktive Werte (vorher `sudo apt install build-essential`, falls `make` noch fehlt).
 - `make setup-env scope=prod`: frei wählbarer Scope (`dev` oder `prod`), auch via `SETUP_ENV_SCOPE=prod make setup-env`. Bei Scope `prod` läuft ebenfalls der Dependency-Check (`scripts/check-server-tools.sh`).
 - Nach jedem Setup läuft automatisch `make post-setup`. Falls in `.env` eine `NEW_REMOTE_URL` gesetzt wurde, wird das Git-Remote `origin` darauf aktualisiert (`switch-remote`). Leer lassen, wenn nichts umgehängt werden soll.
 
