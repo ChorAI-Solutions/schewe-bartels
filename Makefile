@@ -1,38 +1,37 @@
-.PHONY: help pull setup setup-dev setup-prod setup-env post-setup dev dev-n8n dev-down dev-restart dev-logs env-dev rebuild-dev prod prod-n8n prod-down prod-restart prod-logs env-prod rebuild-prod n8n-logs update-n8n lint type format studio migrate switch-remote
+.PHONY: help pull dev dev-n8n dev-down dev-restart dev-logs env-dev rebuild-dev prod prod-n8n prod-down prod-restart prod-logs env-prod rebuild-prod n8n-logs update-n8n lint type format studio migrate setup setup-dev setup-prod setup-env post-setup switch-remote
 
 COMPOSE ?= docker compose
 DEV_PROFILES := --profile dev
 PROD_PROFILES := --profile prod
 N8N_PROFILE := --profile n8n
 REMOTE_NAME ?= origin
-NEW_REMOTE_URL ?=
-SETUP_SCRIPT := node scripts/setup-env.cjs
-CHECK_DEPS_SCRIPT := ./scripts/check-deps.sh
+SETUP_SCRIPT ?= node scripts/setup-env.cjs
+SERVER_CHECK_SCRIPT ?= bash scripts/check-server-tools.sh
 
 help:
 	@echo "Verfügbare Targets:"
-	@echo "  make setup         - Alias für setup-dev"
-	@echo "  make setup-dev     - Führt scripts/setup-env.cjs mit Scope dev aus"
-	@echo "  make setup-prod    - Prüft Server-Abhängigkeiten & führt setup-env (prod) aus"
-	@echo "  make setup-env     - Setup mit Scope aus Variable scope=dev|prod"
+	@echo "  make setup         - Alias für setup-dev (lokales Setup)"
+	@echo "  make setup-dev     - Interaktiver Assistent mit dev-Defaults"
+	@echo "  make setup-prod    - Prüft Server-Abhängigkeiten & führt setup-env im prod-Scope aus"
+	@echo "  make setup-env     - Setup ohne Scope (alle Variablen der Reihe nach)"
 	@echo "  make post-setup    - Liest .env und setzt optional NEW_REMOTE_URL"
 	@echo "  make dev           - Startet das dev-Profil ohne n8n (Hot-Reload, Mailpit, pgAdmin)"
 	@echo "  make dev-n8n       - Startet dev + n8n Profile gemeinsam"
 	@echo "  make dev-down      - Stoppt das dev-Profil"
 	@echo "  make dev-restart   - Neustart aller Dienste im dev-Profil"
 	@echo "  make dev-logs      - Folgt den Logs von web-dev"
-	@echo "  make rebuild-dev   - Baut web-dev ohne Cache neu und startet das dev-Profil"
 	@echo "  make env-dev       - Recreated web-dev (z. B. nach .env-Anpassungen)"
-	@echo "  make env-prod      - Recreated web (z. B. nach .env-Anpassungen)"
+	@echo "  make rebuild-dev   - Baut web-dev ohne Cache neu und startet das dev-Profil"
 	@echo "  make prod          - Startet das prod-Profil mit --build"
 	@echo "  make prod-n8n      - Startet prod + n8n Profile gemeinsam mit --build"
 	@echo "  make prod-down     - Stoppt das prod-Profil"
 	@echo "  make prod-restart  - Neustart aller Dienste im prod-Profil"
 	@echo "  make prod-logs     - Folgt den Logs von web"
+	@echo "  make env-prod      - Recreated web (z. B. nach .env-Anpassungen)"
 	@echo "  make rebuild-prod  - Baut web ohne Cache neu und startet das prod-Profil"
 	@echo "  make n8n-logs      - Folgt den Logs von n8n (falls gestartet)"
 	@echo "  make update-n8n    - Holt das neueste n8n-Image und startet den Container neu"
-	@echo "  make switch-remote - Verknüpft das Repo mit NEW_REMOTE_URL (REMOTE_NAME=origin)"
+	@echo "  make switch-remote - Setzt das Git-Remote (Standard-Name: origin)"
 	@echo "  make pull          - Führt git pull für den aktuellen Branch aus"
 	@echo "  make lint          - Führt npm run lint im web-dev Container aus"
 	@echo "  make type          - Führt npm run type-check im web-dev Container aus"
@@ -50,32 +49,25 @@ setup-dev:
 	@$(MAKE) --no-print-directory post-setup
 
 setup-prod:
-	@$(CHECK_DEPS_SCRIPT) prod
+	@$(SERVER_CHECK_SCRIPT)
 	@SETUP_ENV_SCOPE=prod $(SETUP_SCRIPT)
 	@$(MAKE) --no-print-directory post-setup
 
 setup-env:
-	@scope_value=$${scope:-$${SCOPE:-$${SETUP_ENV_SCOPE:-dev}}}; \
-		echo "Nutze Scope: $$scope_value"; \
-		if [ "$$scope_value" = "prod" ]; then \
-			$(CHECK_DEPS_SCRIPT) prod; \
-		fi; \
-		SETUP_ENV_SCOPE=$$scope_value $(SETUP_SCRIPT)
+	@node scripts/setup-env.cjs
 	@$(MAKE) --no-print-directory post-setup
 
 post-setup:
-	@if [ ! -f .env ]; then \
-		echo ".env nicht gefunden – bitte make setup ausführen."; \
-	elif grep -qE "^NEW_REMOTE_URL=" .env; then \
-		NEW_REMOTE=$$(grep -E "^NEW_REMOTE_URL=" .env | tail -1 | cut -d'=' -f2-); \
-		if [ -n "$$NEW_REMOTE" ]; then \
-			echo "Setze Git-Remote auf $$NEW_REMOTE"; \
-			$(MAKE) --no-print-directory switch-remote NEW_REMOTE_URL=$$NEW_REMOTE; \
+	@if [ -f .env ]; then \
+		NEW_REMOTE_URL=$$(grep -E '^NEW_REMOTE_URL=' .env | head -n1 | cut -d= -f2-); \
+		if [ -n "$$NEW_REMOTE_URL" ]; then \
+			echo "➡️  NEW_REMOTE_URL erkannt: $$NEW_REMOTE_URL"; \
+			$(MAKE) switch-remote NEW_REMOTE_URL="$$NEW_REMOTE_URL"; \
 		else \
-			echo "NEW_REMOTE_URL nicht gesetzt – überspringe Remote-Anpassung."; \
-		fi; \
+			echo "ℹ️  Keine NEW_REMOTE_URL gesetzt – überspringe switch-remote."; \
+		fi \
 	else \
-		echo "NEW_REMOTE_URL nicht gefunden – keine Aktion notwendig."; \
+		echo "⚠️  .env nicht gefunden – überspringe switch-remote."; \
 	fi
 
 dev:
@@ -153,3 +145,4 @@ switch-remote:
 	@git remote add $(REMOTE_NAME) $(NEW_REMOTE_URL)
 	@echo "Remote '$(REMOTE_NAME)' zeigt jetzt auf $(NEW_REMOTE_URL)"
 	@git remote -v
+
