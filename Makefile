@@ -1,0 +1,101 @@
+.PHONY: help pull dev dev-n8n dev-down dev-restart dev-logs env-dev rebuild-dev prod prod-n8n prod-down prod-restart prod-logs env-prod rebuild-prod n8n-logs update-n8n lint type format studio migrate
+
+COMPOSE ?= docker compose
+DEV_PROFILES := --profile dev
+PROD_PROFILES := --profile prod
+N8N_PROFILE := --profile n8n
+
+help:
+	@echo "Verfügbare Targets:"
+	@echo "  make dev           - Startet das dev-Profil ohne n8n (Hot-Reload, Mailpit, pgAdmin)"
+	@echo "  make dev-n8n       - Startet dev + n8n Profile gemeinsam"
+	@echo "  make dev-down      - Stoppt das dev-Profil"
+	@echo "  make dev-restart   - Neustart aller Dienste im dev-Profil"
+	@echo "  make dev-logs      - Folgt den Logs von web-dev"
+	@echo "  make env-dev       - Recreated web-dev (z. B. nach .env-Anpassungen)"
+	@echo "  make rebuild-dev   - Baut web-dev ohne Cache neu und startet das dev-Profil"
+	@echo "  make prod          - Startet das prod-Profil mit --build"
+	@echo "  make prod-n8n      - Startet prod + n8n Profile gemeinsam mit --build"
+	@echo "  make prod-down     - Stoppt das prod-Profil"
+	@echo "  make prod-restart  - Neustart aller Dienste im prod-Profil"
+	@echo "  make prod-logs     - Folgt den Logs von web"
+	@echo "  make env-prod      - Recreated web (z. B. nach .env-Anpassungen)"
+	@echo "  make rebuild-prod  - Baut web ohne Cache neu und startet das prod-Profil"
+	@echo "  make n8n-logs      - Folgt den Logs von n8n (falls gestartet)"
+	@echo "  make update-n8n    - Holt das neueste n8n-Image und startet den Container neu"
+	@echo "  make pull          - Führt git pull für den aktuellen Branch aus"
+	@echo "  make lint          - Führt npm run lint im web-dev Container aus"
+	@echo "  make type          - Führt npm run type-check im web-dev Container aus"
+	@echo "  make format        - Führt npm run format im web-dev Container aus"
+	@echo "  make studio        - Startet Prisma Studio im web-dev Container"
+	@echo "  make migrate       - Führt prisma migrate deploy im web-dev Container aus"
+
+pull:
+	git pull
+
+dev:
+	$(COMPOSE) $(DEV_PROFILES) up -d
+
+dev-n8n:
+	$(COMPOSE) $(DEV_PROFILES) $(N8N_PROFILE) up -d
+
+dev-down:
+	$(COMPOSE) $(DEV_PROFILES) down
+
+dev-restart:
+	$(COMPOSE) $(DEV_PROFILES) restart
+
+dev-logs:
+	$(COMPOSE) logs -f web-dev
+
+env-dev:
+	$(COMPOSE) $(DEV_PROFILES) up -d --force-recreate web-dev
+
+rebuild-dev:
+	$(COMPOSE) $(DEV_PROFILES) build --no-cache web-dev
+	$(COMPOSE) $(DEV_PROFILES) up -d
+
+prod:
+	$(COMPOSE) $(PROD_PROFILES) up -d --build
+
+prod-n8n:
+	$(COMPOSE) $(PROD_PROFILES) $(N8N_PROFILE) up -d --build
+
+prod-down:
+	$(COMPOSE) $(PROD_PROFILES) down
+
+prod-restart:
+	$(COMPOSE) $(PROD_PROFILES) restart
+
+prod-logs:
+	$(COMPOSE) logs -f web
+
+env-prod:
+	$(COMPOSE) $(PROD_PROFILES) up -d --force-recreate web
+
+rebuild-prod:
+	$(COMPOSE) $(PROD_PROFILES) build --no-cache web
+	$(COMPOSE) $(PROD_PROFILES) up -d
+
+n8n-logs:
+	$(COMPOSE) logs -f n8n
+
+update-n8n:
+	$(COMPOSE) $(N8N_PROFILE) pull n8n
+	$(COMPOSE) $(N8N_PROFILE) up -d n8n
+
+lint:
+	$(COMPOSE) exec web-dev npm run lint
+
+type:
+	$(COMPOSE) exec web-dev npm run type-check
+
+format:
+	$(COMPOSE) exec web-dev npm run format
+
+studio:
+	$(COMPOSE) exec web-dev npx prisma studio
+
+migrate:
+	$(COMPOSE) exec web-dev npx prisma migrate deploy --schema=prisma/schema.prisma
+
