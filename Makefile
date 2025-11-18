@@ -1,9 +1,12 @@
-.PHONY: help pull dev dev-n8n dev-down dev-restart dev-logs env-dev rebuild-dev prod prod-n8n prod-down prod-restart prod-logs env-prod rebuild-prod n8n-logs update-n8n lint type format studio migrate setup setup-dev setup-prod setup-env post-setup switch-remote bootstrap-remote
+.PHONY: help pull dev dev-n8n dev-down dev-restart dev-logs env-dev rebuild-dev prod prod-n8n prod-down prod-restart prod-logs env-prod rebuild-prod n8n-logs update-n8n lint type format studio migrate setup setup-dev setup-prod setup-env post-setup switch-remote bootstrap-remote reset-dev-db-volume
 
 COMPOSE ?= docker compose
 DEV_PROFILES := --profile dev
 PROD_PROFILES := --profile prod
 N8N_PROFILE := --profile n8n
+COMPOSE_PROJECT_NAME ?= $(notdir $(CURDIR))
+DB_VOLUME := $(COMPOSE_PROJECT_NAME)_db-data
+RESET_DB_VOLUME_ON_SETUP ?= true
 REMOTE_NAME ?= origin
 SETUP_SCRIPT ?= node scripts/setup-env.cjs
 SERVER_CHECK_SCRIPT ?= bash scripts/check-server-tools.sh
@@ -12,7 +15,7 @@ GIT_BOOTSTRAP_SCRIPT ?= bash scripts/git-bootstrap.sh
 help:
 	@echo "Verfügbare Targets:"
 	@echo "  make setup         - Alias für setup-dev (lokales Setup)"
-	@echo "  make setup-dev     - Interaktiver Assistent mit dev-Defaults"
+	@echo "  make setup-dev     - Interaktiver Assistent mit dev-Defaults (setzt DB-Volume zurück, falls RESET_DB_VOLUME_ON_SETUP=true)"
 	@echo "  make setup-prod    - Prüft Server-Abhängigkeiten & führt setup-env im prod-Scope aus"
 	@echo "  make setup-env     - Setup ohne Scope (alle Variablen der Reihe nach)"
 	@echo "  make post-setup    - Liest .env und setzt optional NEW_REMOTE_URL"
@@ -47,6 +50,11 @@ setup: setup-dev
 
 setup-dev:
 	@SETUP_ENV_SCOPE=dev $(SETUP_SCRIPT)
+	@if [ "$(RESET_DB_VOLUME_ON_SETUP)" = "true" ]; then \
+		$(MAKE) --no-print-directory reset-dev-db-volume; \
+	else \
+		echo "ℹ️  RESET_DB_VOLUME_ON_SETUP=false – behalte bestehendes db-Volume."; \
+	fi
 	@$(MAKE) --no-print-directory post-setup
 
 setup-prod:
@@ -137,6 +145,17 @@ studio:
 
 migrate:
 	$(COMPOSE) exec web-dev npx prisma migrate deploy --schema=prisma/schema.prisma
+
+reset-dev-db-volume:
+	@echo "⏹️  Stoppe dev-Stack (falls aktiv), damit das Volume frei wird."; \
+	$(COMPOSE) $(DEV_PROFILES) down >/dev/null 2>&1 || true; \
+	DB_VOLUME_NAME=$(DB_VOLUME); \
+	if docker volume inspect $$DB_VOLUME_NAME >/dev/null 2>&1; then \
+		echo "🧹 Entferne bestehendes Volume $$DB_VOLUME_NAME für ein frisches dev-Setup."; \
+		docker volume rm $$DB_VOLUME_NAME >/dev/null; \
+	else \
+		echo "ℹ️  Kein Volume $$DB_VOLUME_NAME gefunden – nichts zu tun."; \
+	fi
 
 switch-remote:
 	@[ -n "$(strip $(NEW_REMOTE_URL))" ] || (echo "Bitte NEW_REMOTE_URL angeben, z. B. make switch-remote NEW_REMOTE_URL=git@github.com:user/repo.git"; exit 1)
