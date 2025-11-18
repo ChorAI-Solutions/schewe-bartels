@@ -30,7 +30,7 @@ docker compose --profile dev up -d
    # oder direkt:
    node scripts/setup-env.cjs --scope prod
    ```
-   Das Skript liest `env.template`, berücksichtigt die `# @meta { ... }` Blöcke und fragt nur Variablen ab, deren `scopes` (`dev` oder `prod`) zum gewünschten Profil passen. Enter übernimmt den Default/Placeholder, ein einzelner Punkt `.` setzt den Wert leer. Nach dem Setup wird optional automatisch `NEW_REMOTE_URL` aus der `.env` gezogen und via `make switch-remote` gesetzt.
+   Das Skript liest `env.template`, berücksichtigt die `# @meta { ... }` Blöcke und fragt nur Variablen ab, deren `scopes` (`dev` oder `prod`) zum gewünschten Profil passen. Enter übernimmt den Default/Placeholder, ein einzelner Punkt `.` setzt den Wert leer. Nach dem Setup wird optional automatisch `NEW_REMOTE_URL` aus der `.env` gezogen und via `make switch-remote` gesetzt. Bei `make setup-prod` wird zusätzlich `scripts/check-deps.sh` aufgerufen: dieses prüft Docker, Docker Compose, Git sowie Node.js/npm und versucht fehlende Pakete (apt/brew) zu installieren. Auf Servern deshalb mit passenden Rechten (sudo) ausführen.
 2. Die wichtigsten Variablen im Überblick:
    - **Allgemein**: `NODE_ENV`, `NEXT_PUBLIC_SITE_URL` (öffentliche URL des Frontends), `SITE_DOMAIN` (Domain ohne Schema, für TLS), `ADMIN_TOKEN`, `COMPOSE_PROFILES` (z. B. `dev` lokal oder `prod,n8n` auf dem Server), optional `AUTH_DISABLED=true` nur lokal.
    - **TLS**: `ACME_EMAIL` (Empfänger für Let's-Encrypt-Benachrichtigungen).
@@ -59,7 +59,7 @@ Standardmäßig laufen alle Dienste nur auf dem internen Docker-Netzwerk bzw. au
 
 - `make setup` / `make setup-dev`: erstellt `.env` mit den dev-Defaults.
 - `make setup-prod`: generiert `.env` für produktive Werte.
-- `make setup-env scope=prod`: frei wählbarer Scope (`dev` oder `prod`), auch via `SETUP_ENV_SCOPE=prod make setup-env`.
+- `make setup-env scope=prod`: frei wählbarer Scope (`dev` oder `prod`), auch via `SETUP_ENV_SCOPE=prod make setup-env`. Bei Scope `prod` läuft ebenfalls der Dependency-Check (`scripts/check-deps.sh`).
 - Nach jedem Setup läuft automatisch `make post-setup`. Falls in `.env` eine `NEW_REMOTE_URL` gesetzt wurde, wird das Git-Remote `origin` darauf aktualisiert (`switch-remote`). Leer lassen, wenn nichts umgehängt werden soll.
 
 ### Dienste & Ports

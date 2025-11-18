@@ -7,12 +7,13 @@ N8N_PROFILE := --profile n8n
 REMOTE_NAME ?= origin
 NEW_REMOTE_URL ?=
 SETUP_SCRIPT := node scripts/setup-env.cjs
+CHECK_DEPS_SCRIPT := ./scripts/check-deps.sh
 
 help:
 	@echo "Verfügbare Targets:"
 	@echo "  make setup         - Alias für setup-dev"
 	@echo "  make setup-dev     - Führt scripts/setup-env.cjs mit Scope dev aus"
-	@echo "  make setup-prod    - Führt scripts/setup-env.cjs mit Scope prod aus"
+	@echo "  make setup-prod    - Prüft Server-Abhängigkeiten & führt setup-env (prod) aus"
 	@echo "  make setup-env     - Setup mit Scope aus Variable scope=dev|prod"
 	@echo "  make post-setup    - Liest .env und setzt optional NEW_REMOTE_URL"
 	@echo "  make dev           - Startet das dev-Profil ohne n8n (Hot-Reload, Mailpit, pgAdmin)"
@@ -49,12 +50,16 @@ setup-dev:
 	@$(MAKE) --no-print-directory post-setup
 
 setup-prod:
+	@$(CHECK_DEPS_SCRIPT) prod
 	@SETUP_ENV_SCOPE=prod $(SETUP_SCRIPT)
 	@$(MAKE) --no-print-directory post-setup
 
 setup-env:
 	@scope_value=$${scope:-$${SCOPE:-$${SETUP_ENV_SCOPE:-dev}}}; \
 		echo "Nutze Scope: $$scope_value"; \
+		if [ "$$scope_value" = "prod" ]; then \
+			$(CHECK_DEPS_SCRIPT) prod; \
+		fi; \
 		SETUP_ENV_SCOPE=$$scope_value $(SETUP_SCRIPT)
 	@$(MAKE) --no-print-directory post-setup
 
