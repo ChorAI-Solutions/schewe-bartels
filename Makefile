@@ -1,4 +1,4 @@
-.PHONY: help pull dev dev-n8n dev-down dev-restart dev-logs env-dev rebuild-dev prod prod-n8n prod-down prod-restart prod-logs env-prod rebuild-prod n8n-logs update-n8n lint type format studio migrate setup setup-dev setup-prod setup-env post-setup switch-remote bootstrap-remote reset-dev-db-volume
+.PHONY: help pull dev dev-n8n dev-down dev-restart dev-logs env-dev rebuild-dev prod prod-n8n prod-down prod-restart prod-logs env-prod rebuild-prod n8n-logs update-n8n lint type format studio migrate setup setup-dev setup-prod setup-env post-setup switch-remote bootstrap-remote reset-dev-db-volume clean-prod
 
 COMPOSE ?= docker compose
 DEV_PROFILES := --profile dev
@@ -6,6 +6,7 @@ PROD_PROFILES := --profile prod
 N8N_PROFILE := --profile n8n
 COMPOSE_PROJECT_NAME ?= $(notdir $(CURDIR))
 DB_VOLUME := $(COMPOSE_PROJECT_NAME)_db-data
+WEB_IMAGE := $(COMPOSE_PROJECT_NAME)-web
 RESET_DB_VOLUME_ON_SETUP ?= true
 REMOTE_NAME ?= origin
 SETUP_SCRIPT ?= node scripts/setup-env.cjs
@@ -61,6 +62,21 @@ setup-prod:
 	@$(SERVER_CHECK_SCRIPT)
 	@SETUP_ENV_SCOPE=prod $(SETUP_SCRIPT)
 	@$(MAKE) --no-print-directory post-setup
+	@$(MAKE) --no-print-directory clean-prod
+	@echo "⬇️  Ziehe Basis-Images für prod + n8n …"
+	@$(COMPOSE) $(PROD_PROFILES) $(N8N_PROFILE) pull db n8n caddy
+	@echo "🚀 Starte prod + n8n Stack frisch (inkl. Web-Rebuild) …"
+	@$(COMPOSE) $(PROD_PROFILES) $(N8N_PROFILE) up -d --build --pull always
+
+clean-prod:
+	@echo "🧹 Stoppe laufende prod/n8n-Container und lösche Volumes (falls vorhanden)."
+	@$(COMPOSE) $(PROD_PROFILES) $(N8N_PROFILE) down -v --remove-orphans || true
+	@if docker image inspect $(WEB_IMAGE) >/dev/null 2>&1; then \
+		echo "🗑️  Entferne altes Web-Image $(WEB_IMAGE), damit beim nächsten Start garantiert frisch gebaut wird."; \
+		docker image rm $(WEB_IMAGE) >/dev/null; \
+	else \
+		echo "ℹ️  Kein lokales Image $(WEB_IMAGE) gefunden – nichts zu tun."; \
+	fi
 
 setup-env:
 	@node scripts/setup-env.cjs
