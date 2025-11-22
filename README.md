@@ -7,8 +7,9 @@ Dieses Repository ist ein Ausgangspunkt für Projekte mit Next.js (App Router), 
 ## Quickstart
 
 ```bash
-make setup        # erstellt .env per dev-Defaults
-make dev          # startet db + web-dev + Mailpit + pgAdmin
+make setup          # erstellt .env per dev-Defaults und synchronisiert docker/supabase/.env
+make supabase-up    # startet den Supabase-Stack (Postgres + Auth + Storage + Kong)
+make dev            # startet web-dev + Mailpit + pgAdmin
 ```
 
 ---
@@ -41,7 +42,7 @@ make dev          # startet db + web-dev + Mailpit + pgAdmin
 3. Die wichtigsten Variablen im Überblick:
    - **Allgemein**: `NODE_ENV`, `NEXT_PUBLIC_SITE_URL` (öffentliche URL des Frontends), `SITE_DOMAIN` (Domain ohne Schema, für TLS), `ADMIN_TOKEN`, `COMPOSE_PROFILES` (z. B. `dev` lokal oder `prod,n8n` auf dem Server), optional `AUTH_DISABLED=true` nur lokal.
    - **TLS**: `ACME_EMAIL` (Empfänger für Let's-Encrypt-Benachrichtigungen).
-   - **Datenbank**: `POSTGRES_USER`, `POSTGRES_DB`, `POSTGRES_PASSWORD`, `DATABASE_URL` (muss zu den obigen Werten passen).
+   - **Datenbank/Supabase**: `POSTGRES_USER`, `POSTGRES_DB`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`, `DATABASE_URL`, `DOCKER_DATABASE_URL`, dazu `SUPABASE_DOMAIN`, `SUPABASE_KONG_HOST`, `SUPABASE_KONG_PORT`, `SUPABASE_POOLER_PORT`.
    - **n8n** (nur wenn genutzt): `N8N_HOST`, `N8N_DOMAIN` (für TLS), `N8N_PROTOCOL`, optional `N8N_WEBHOOK_URL`, Basic-Auth (`N8N_BASIC_AUTH_*`) und SMTP-Konfiguration (`N8N_SMTP_*`).
    - **PgAdmin/Mailpit**: Zugangsdaten und SMTP-Port kannst du bei Bedarf anpassen.
 3. Production-Domains direkt eintragen (z. B. `https://ai-test.dakatos.online`).
@@ -54,11 +55,12 @@ Tipp: Du kannst mehrere `.env`-Dateien verwalten (z. B. `.env.dev`, `.env.prod
 
 ## 3. Docker Compose Profile & Dienste
 
-| Profil | Dienste                                     | Beschreibung |
-|--------|----------------------------------------------|--------------|
-| `dev`  | `db`, `web-dev`, `mailpit`, `pgadmin`        | Lokale Entwicklung mit Hot-Reload, Mailpit & pgAdmin |
-| `prod` | `db`, `web`, `caddy`                         | Produktionsbetrieb mit automatischem HTTPS (Caddy) |
-| `n8n`  | `n8n`                                        | Optionaler Start von n8n (kann mit jedem Profil kombiniert werden) |
+| Profil / Stack | Dienste                                     | Beschreibung |
+|----------------|----------------------------------------------|--------------|
+| `dev`          | `web-dev`, `mailpit`, `pgadmin`              | Lokale Entwicklung mit Hot-Reload, Mailpit & pgAdmin |
+| `prod`         | `web`, `caddy`                               | Produktionsbetrieb mit automatischem HTTPS (Caddy) |
+| `n8n`          | `n8n`                                        | Optionaler Start von n8n (kann mit jedem Profil kombiniert werden) |
+| `supabase` (separater Compose) | `kong`, `auth`, `rest`, `supavisor`, `studio`, `storage`, `db`, … | Komplettes Supabase-Backend via `make supabase-up` |
 
 Standardmäßig laufen alle Dienste nur auf dem internen Docker-Netzwerk bzw. auf `127.0.0.1`. Für HTTP(S)-Zugriff in Produktion empfiehlt sich ein Reverse Proxy (z. B. nginx; siehe unten).
 
@@ -72,10 +74,44 @@ Standardmäßig laufen alle Dienste nur auf dem internen Docker-Netzwerk bzw. au
 ### Dienste & Ports
 
 - `web` / `web-dev`: Next.js Applikation (Port 3000)
-- `db`: Postgres 16 (intern erreichbar)
+- `Supabase` (eigener Stack): Postgres 15 + Auth, Storage, Realtime, Studio, Kong (Ports siehe `docker/supabase/.env`)
 - `n8n`: n8n Automation (Port 5678, optional)
 - `pgadmin`: PgAdmin 4 (Port 5050, nur dev)
 - `mailpit`: Mail UI + SMTP Fake-Server (Ports 8025/1025, nur dev)
+
+---
+
+## 3b. Supabase Self-Hosting (docker/supabase)
+
+Der komplette Supabase-Stack (Postgres 15, Supavisor, Auth/GoTrue, PostgREST, Realtime, Storage, Studio, Kong, Analytics) lebt unverändert im Ordner `docker/supabase` und wird separat gestartet. Vorgehen:
+
+1. `.env` für Supabase wird automatisch von `make setup` erstellt bzw. synchronisiert (`docker/supabase/.env`). Prüfe die Datei nach dem Setup und passe sensible Werte (`ANON_KEY`, `SERVICE_ROLE_KEY`, `JWT_SECRET`, `VAULT_ENC_KEY`, …) für deine Umgebung an. `POSTGRES_DB`, `POSTGRES_PASSWORD`, `POSTGRES_PORT=54322` und `POOLER_PROXY_PORT_TRANSACTION=6543` werden aus der Haupt-`.env` übernommen, damit Prisma & Supabase identische Ports/Datenbanken nutzen.
+2. Stack starten/stoppen:
+   ```bash
+   make supabase-up        # docker compose -f docker/supabase/docker-compose.yml up -d
+   make supabase-logs      # SERVICE=kong make supabase-logs (optional)
+   make supabase-down      # stoppt nur den Supabase-Stack
+   make supabase-reset     # ruft docker/supabase/reset.sh auf (⚠️ löscht Daten)
+   ```
+   Voraussetzung: `docker/supabase/.env` existiert – das Makefile prüft das automatisch.
+3. Verbindung aus Next.js/Prisma:
+   - `.env` enthält jetzt `DATABASE_URL=postgresql://...@localhost:54322/app?schema=public`.
+   - Container bekommen automatisch `DOCKER_DATABASE_URL=postgresql://...@host.docker.internal:54322/...`, damit `web`/`web-dev` ohne zusätzliches Netzwerk auf Supabase zugreifen.
+   - Nach einem frischen Supabase-Start `make dev` ausführen und Migrationen anwenden (`docker compose exec web-dev npx prisma migrate deploy`).
+4. HTTPS & Domains:
+   - Setze `SUPABASE_DOMAIN=sb-ai-test.dakatos.online` (oder deine Wunschdomain) sowie optional `SUPABASE_KONG_HOST` / `SUPABASE_KONG_PORT`, falls der Kong-Reverse-Proxy nicht auf `host.docker.internal:8000` erreichbar ist.
+   - Caddy schreibt dann automatisch eine Route: `https://<SUPABASE_DOMAIN> → http://<SUPABASE_KONG_HOST>:<SUPABASE_KONG_PORT>`.
+   - DNS muss ebenfalls auf deinen Server zeigen; Zertifikate verwaltet Caddy (Volume `caddy-data`).
+5. Zugriff auf Studio/REST:
+   - Lokal: `http://localhost:8000` (Kong) bzw. `http://localhost:54323` (direktes Postgres via Supavisor, falls du die Ports in `.env` so gesetzt hast).
+   - Produktion: `https://sb-ai-test.dakatos.online` (über Caddy).
+6. Datenbank-Backups laufen nun über den Supabase-Compose:
+   ```bash
+   SERVICE=db make supabase-logs          # Health prüfen
+   docker compose -f docker/supabase/docker-compose.yml --env-file docker/supabase/.env exec db pg_dump -U postgres app > backup.sql
+   ```
+
+Solange Supabase separat läuft, brauchen die regulären Compose-Profile keinen eigenen Postgres-Container mehr. Stelle nur sicher, dass Supabase bereits hochgefahren ist, bevor du `make dev` oder `make prod` startest.
 
 ---
 
@@ -186,6 +222,7 @@ make prod-n8n
   ```
 - **Mailpit öffnen**: `http://localhost:8025`
 - **PgAdmin öffnen**: `http://localhost:5050` (Login mit `PGADMIN_DEFAULT_*`)
+- **Docker-Konflikte beseitigen** (behält n8n-Daten): `make clean-docker`
 
 ---
 
@@ -195,7 +232,7 @@ make prod-n8n
 - Starke Passwörter/Tokens wählen und regelmäßig rotieren.
 - In Produktion `AUTH_DISABLED=false` lassen.
 - Firewalls so konfigurieren, dass nur nötige Ports offen sind (z. B. 80/443 für Web, 22 für SSH).
-- Backups für Postgres einplanen (`docker compose exec db pg_dump ...`).
+- Backups für Postgres einplanen (`docker compose -f docker/supabase/docker-compose.yml --env-file docker/supabase/.env exec db pg_dump ...`).
 
 ---
 

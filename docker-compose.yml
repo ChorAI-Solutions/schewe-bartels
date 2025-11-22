@@ -1,24 +1,4 @@
 services:
-  db:
-    image: postgres:16-alpine
-    profiles:
-      - dev
-      - prod
-    environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-    volumes:
-      - db-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
-    networks:
-      - internal
-
   web:
     profiles:
       - prod
@@ -31,13 +11,10 @@ services:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-${DATABASE_URL}}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
       ADMIN_TOKEN: ${ADMIN_TOKEN}
       AUTH_DISABLED: ${AUTH_DISABLED}
-    depends_on:
-      db:
-        condition: service_healthy
     ports:
       - "127.0.0.1:3000:3000"
     healthcheck:
@@ -46,6 +23,8 @@ services:
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - internal
 
@@ -60,7 +39,7 @@ services:
       NODE_ENV: development
       PORT: 3000
       HOSTNAME: 0.0.0.0
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-${DATABASE_URL}}
       NEXT_PUBLIC_SITE_URL: http://localhost:3000
       ADMIN_TOKEN: ${ADMIN_TOKEN}
       AUTH_DISABLED: ${AUTH_DISABLED}
@@ -69,11 +48,10 @@ services:
     volumes:
       - ./:/app
       - web-dev-node-modules:/app/node_modules
-    depends_on:
-      db:
-        condition: service_healthy
     ports:
       - "3000:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - internal
 
@@ -125,6 +103,8 @@ services:
       - caddy-data:/data
       - caddy-config:/config
       - ./docker/caddy/entrypoint.sh:/etc/caddy/entrypoint.sh:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - internal
     command: ["/bin/sh", "/etc/caddy/entrypoint.sh"]
@@ -141,8 +121,8 @@ services:
       - "127.0.0.1:5050:80"
     networks:
       - internal
-    depends_on:
-      - db
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
   mailpit:
@@ -160,7 +140,6 @@ networks:
   internal:
 
 volumes:
-  db-data:
   n8n-data:
   web-dev-node-modules:
   caddy-data:
