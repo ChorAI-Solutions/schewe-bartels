@@ -28,7 +28,7 @@ Dieser Leitfaden zeigt dir, wie du in diesem Projekt schrittweise einen Chat‑A
   - `/api/admin/ping` (Token‑geschützt)
   - `/api/webhooks/n8n` (Token‑geschützt; Echo‑Beispiel)
 - Prisma + Postgres mit Modell `BlogPost`
-- Docker Compose: `web`, `db`, `n8n`, `pgadmin`, `mailpit`
+- Docker Compose: `web`, `db`, `n8n`, `mailpit`
 
 ## Roadmap der Agenten
 1) Chat‑Agent (Text): Next.js API‑Route `/api/chat` → n8n Webhook → Antwort zurück

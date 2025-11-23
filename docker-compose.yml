@@ -113,21 +113,6 @@ services:
     command: ["/bin/sh", "/etc/caddy/entrypoint.sh"]
     restart: unless-stopped
 
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    profiles:
-      - dev
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-    ports:
-      - "127.0.0.1:5050:80"
-    networks:
-      - internal
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    restart: unless-stopped
-
   mailpit:
     image: axllent/mailpit:latest
     profiles:
