@@ -74,7 +74,7 @@ setup-prod:
 	@$(MAKE) --no-print-directory post-setup
 	@$(MAKE) --no-print-directory clean-prod
 	@echo "⬇️  Ziehe Basis-Images für prod + n8n …"
-	@$(COMPOSE) $(PROD_PROFILES) $(N8N_PROFILE) pull db n8n caddy
+	@$(COMPOSE) $(PROD_PROFILES) $(N8N_PROFILE) pull n8n caddy
 	@echo "🚀 Starte prod + n8n Stack frisch (inkl. Web-Rebuild) …"
 	@$(COMPOSE) $(PROD_PROFILES) $(N8N_PROFILE) up -d --build --pull always
 

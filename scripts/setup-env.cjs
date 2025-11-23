@@ -108,6 +108,20 @@ async function promptValue(entry, scope, rl) {
   return answer;
 }
 
+function promptYesNo(rl, question, defaultAnswer = false) {
+  const suffix = defaultAnswer ? " (J/n)" : " (j/N)";
+  return new Promise((resolve) => {
+    rl.question(`${question}${suffix} `, (answer) => {
+      const normalized = answer.trim().toLowerCase();
+      if (!normalized) {
+        resolve(defaultAnswer);
+        return;
+      }
+      resolve(normalized === "j" || normalized === "ja" || normalized === "y");
+    });
+  });
+}
+
 async function main() {
   if (!fs.existsSync(TEMPLATE_PATH)) {
     console.error(`env.template nicht gefunden (${TEMPLATE_PATH})`);
@@ -115,15 +129,26 @@ async function main() {
   }
 
   const scope = resolveScope();
-  const template = fs.readFileSync(TEMPLATE_PATH, "utf8");
-  const entries = parseTemplate(template);
-
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
   });
 
   try {
+    if (fs.existsSync(OUTPUT_PATH)) {
+      const keepExisting = await promptYesNo(
+        rl,
+        ".env existiert bereits. Möchtest du die vorhandenen Werte übernehmen?"
+      );
+      if (keepExisting) {
+        console.log(".env bleibt unverändert – vorhandene Werte werden genutzt.");
+        return;
+      }
+    }
+
+    const template = fs.readFileSync(TEMPLATE_PATH, "utf8");
+    const entries = parseTemplate(template);
+
     const outputLines = [
       `# Erstellt von scripts/setup-env.cjs (Scope: ${scope})`,
       `# ${new Date().toISOString()}`,
