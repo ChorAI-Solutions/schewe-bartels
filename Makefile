@@ -135,8 +135,13 @@ prod:
 prod-n8n:
 	$(COMPOSE) $(PROD_PROFILES) $(N8N_PROFILE) up -d --build
 
+prod-all:
+	@$(MAKE) --no-print-directory supabase-up
+	$(COMPOSE) $(PROD_PROFILES) $(N8N_PROFILE) up -d --build
+
 prod-down:
-	$(COMPOSE) $(PROD_PROFILES) down
+	$(COMPOSE) $(PROD_PROFILES) $(N8N_PROFILE) down
+	@$(MAKE) --no-print-directory supabase-down
 
 prod-restart:
 	$(COMPOSE) $(PROD_PROFILES) restart
