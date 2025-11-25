@@ -70,3 +70,4 @@ SQL
 
 echo "[supabase-app-user] Benutzer '${APP_DB_USER}' ist einsatzbereit."
 
+
