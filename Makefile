@@ -79,8 +79,14 @@ setup-prod:
 	@$(COMPOSE) $(PROD_PROFILES) $(N8N_PROFILE) up -d --build --pull always
 
 clean-prod:
-	@echo "🧹 Stoppe laufende prod/n8n-Container und lösche Volumes (falls vorhanden)."
-	@$(COMPOSE) $(PROD_PROFILES) $(N8N_PROFILE) down -v --remove-orphans || true
+	@echo "🧹 Stoppe laufende prod/n8n-Container (n8n-Daten bleiben erhalten)."
+	@$(COMPOSE) $(PROD_PROFILES) $(N8N_PROFILE) down --remove-orphans || true
+	@for volume in $(COMPOSE_PROJECT_NAME)_db-data $(COMPOSE_PROJECT_NAME)_caddy-data $(COMPOSE_PROJECT_NAME)_caddy-config; do \
+		if docker volume inspect $$volume >/dev/null 2>&1; then \
+			echo "   -> Entferne $$volume"; \
+			docker volume rm $$volume >/dev/null; \
+		fi; \
+	done
 	@if docker image inspect $(WEB_IMAGE) >/dev/null 2>&1; then \
 		echo "🗑️  Entferne altes Web-Image $(WEB_IMAGE), damit beim nächsten Start garantiert frisch gebaut wird."; \
 		docker image rm $(WEB_IMAGE) >/dev/null; \
