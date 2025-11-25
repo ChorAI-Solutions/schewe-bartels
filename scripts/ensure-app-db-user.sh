@@ -16,6 +16,10 @@ source "$ENV_FILE"
 source "$SUPABASE_ENV_FILE"
 set +a
 
+escape_sql() {
+  printf "%s" "$1" | sed "s/'/''/g"
+}
+
 APP_DB_USER="${APP_DB_USER:-}"
 APP_DB_PASSWORD="${APP_DB_PASSWORD:-}"
 APP_DB_NAME="${APP_DB_NAME:-${POSTGRES_DB:-}}"
@@ -26,6 +30,10 @@ if [[ -z "$APP_DB_USER" || -z "$APP_DB_PASSWORD" || -z "$APP_DB_NAME" ]]; then
 fi
 
 echo "[supabase-app-user] Stelle sicher, dass der Benutzer '${APP_DB_USER}' für Datenbank '${APP_DB_NAME}' existiert …"
+
+ROLE_ESC="$(escape_sql "$APP_DB_USER")"
+PASS_ESC="$(escape_sql "$APP_DB_PASSWORD")"
+DB_ESC="$(escape_sql "$APP_DB_NAME")"
 
 for _ in {1..30}; do
   if $COMPOSE_CMD exec db pg_isready -U postgres -h localhost >/dev/null 2>&1; then
@@ -40,15 +48,12 @@ if [[ "${ready:-0}" -ne 1 ]]; then
   exit 1
 fi
 
-$COMPOSE_CMD exec -T db psql -U postgres \
-  -v app_db_user="$APP_DB_USER" \
-  -v app_db_pass="$APP_DB_PASSWORD" \
-  -v app_db_name="$APP_DB_NAME" <<'SQL'
-DO $$
+$COMPOSE_CMD exec -T db psql -U postgres <<SQL
+DO \$\$
 DECLARE
-  role_name text := :'app_db_user';
-  role_pass text := :'app_db_pass';
-  target_db text := :'app_db_name';
+  role_name text := '${ROLE_ESC}';
+  role_pass text := '${PASS_ESC}';
+  target_db text := '${DB_ESC}';
 BEGIN
   IF target_db IS NULL OR target_db = '' THEN
     RAISE EXCEPTION 'APP_DB_NAME is empty';
@@ -66,7 +71,7 @@ BEGIN
   EXECUTE format('GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO %I', role_name);
   EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO %I', role_name);
   EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO %I', role_name);
-END $$;
+END \$\$;
 SQL
 
 echo "[supabase-app-user] Benutzer '${APP_DB_USER}' ist einsatzbereit."
