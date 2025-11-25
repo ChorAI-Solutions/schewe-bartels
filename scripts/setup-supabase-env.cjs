@@ -100,6 +100,9 @@ function main() {
       rootEnv.POSTGRES_PASSWORD ?? supabaseEnvBefore.POSTGRES_PASSWORD,
     POSTGRES_DB: rootEnv.POSTGRES_DB ?? supabaseEnvBefore.POSTGRES_DB,
     POSTGRES_PORT: rootEnv.POSTGRES_PORT ?? supabaseEnvBefore.POSTGRES_PORT,
+    POSTGRES_HOST: rootEnv.POSTGRES_HOST ?? supabaseEnvBefore.POSTGRES_HOST,
+    POSTGRES_DIRECT_PORT:
+      rootEnv.POSTGRES_DIRECT_PORT ?? supabaseEnvBefore.POSTGRES_DIRECT_PORT,
     POOLER_PROXY_PORT_TRANSACTION:
       rootEnv.SUPABASE_POOLER_PORT ??
       supabaseEnvBefore.POOLER_PROXY_PORT_TRANSACTION,

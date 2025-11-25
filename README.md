@@ -16,7 +16,7 @@ Alle Bausteine werden über Makefile-Targets gestartet. Diese Anleitung führt d
 
 - Docker Desktop (macOS/Windows) oder Docker Engine + Compose Plugin (Linux)
 - Git und eine Shell (zsh/Bash/PowerShell)
-- Optional: Node.js 20 LTS, falls du außerhalb von Docker entwickeln möchtest
+- Node.js 20.x + npm (das Setup-Skript installiert/aktualisiert diese Version automatisch, falls nötig)
 
 Auf frischen Linux-Servern zusätzlich:
 
@@ -40,6 +40,7 @@ sudo apt install -y docker.io docker-compose-plugin make git
    make setup            # Scope=dev
    ```
    - Gibt es bereits eine `.env`, fragt das Skript, ob die bestehenden Werte genutzt werden sollen.
+   - Das Setup prüft Git, Docker sowie Node.js und installiert bei Bedarf automatisch Node.js 20.x (NodeSource auf Linux bzw. Homebrew auf macOS).
    - Im Anschluss wird automatisch `docker/supabase/.env` erstellt/aktualisiert.
 
 3. **Supabase-Stack starten**
@@ -133,7 +134,9 @@ Alle Container befinden sich im internen Docker-Netzwerk; externe Zugriffe laufe
 - Zugriff:
   - Lokal (ohne TLS): `http://localhost:8000`
   - Prod (über Caddy + Zertifikat): `https://<SUPABASE_DOMAIN>`
-  - Postgres direkt: `host.docker.internal:54322` (innerhalb von Docker) oder via Supavisor (`supabase-pooler:5432`)
+  - Interne Verbindungen (Container → DB): `host.docker.internal:${POSTGRES_PORT}`
+  - Direkter Externzugriff: `https://<SUPABASE_DOMAIN>:${POSTGRES_DIRECT_PORT}` → `postgresql://<APP_DB_USER>:<APP_DB_PASSWORD>@<SUPABASE_DOMAIN>:<POSTGRES_DIRECT_PORT>/<APP_DB_NAME>`  
+    `scripts/ensure-app-db-user.sh` wird nach `make supabase-up` automatisch ausgeführt und legt den in `.env` definierten App-Benutzer inklusive Rechte an (Standard: `APP_DB_USER=shorty`, Port `54324`). Dieser Nutzer wird für n8n/Prisma verwendet.
 
 Backups:
 
@@ -167,6 +170,24 @@ docker compose -f docker/supabase/docker-compose.yml \
    - n8n-Webhooks → Next.js: Header `X-Admin-Token: <ADMIN_TOKEN>` aus `.env`
 4. Für direkten Postgres-Zugriff über Internet empfiehlt sich ein VPN oder SSH-Tunnel; ansonsten `host.docker.internal` nur innerhalb desselben Servers nutzen.
 
+### 6.3 Direkter Postgres-Zugriff (n8n DB-Node, Prisma, BI-Tools)
+
+`scripts/ensure-app-db-user.sh` erzeugt nach jedem `make supabase-up` automatisch den App-Benutzer (`APP_DB_USER` / `APP_DB_PASSWORD`) und vergibt die notwendigen Rechte auf `APP_DB_NAME`. Die Verbindung läuft über den offenen Port `POSTGRES_DIRECT_PORT` (Standard 54324) ohne TLS.
+
+| Feld                       | Wert / Herkunft                                    |
+|----------------------------|----------------------------------------------------|
+| **Host**                   | `SUPABASE_DOMAIN` (z. B. `sb-ai-test.dakatos.online`) |
+| **Port**                   | `POSTGRES_DIRECT_PORT` (Default `54324`)           |
+| **Database**               | `APP_DB_NAME` (Default `ai-test-prod-db`)          |
+| **User / Password**        | `APP_DB_USER` / `APP_DB_PASSWORD`                  |
+| **SSL**                    | `Disable` bzw. `Allow` + „Ignore SSL Issues“       |
+
+Beispiel-DSN:
+
+```
+postgresql://APP_DB_USER:APP_DB_PASSWORD@sb-ai-test.dakatos.online:54324/APP_DB_NAME
+```
+
 ---
 
 ## 7. Häufige Workflows
@@ -187,7 +208,7 @@ docker compose -f docker/supabase/docker-compose.yml \
 - `.env` und `docker/supabase/.env` niemals committen.
 - Alle Default-Keys (Supabase, n8n, Admin Tokens) zeitnah austauschen.
 - `AUTH_DISABLED` nur in der lokalen Entwicklung auf `true`.
-- Firewalls so konfigurieren, dass nur Ports 80/443 (und optional 5678) öffentlich sind.
+- Firewalls so konfigurieren, dass nur Ports 80/443 (und optional 5678 sowie dein direkter DB-Port, Standard 54324) öffentlich sind.
 - Regelmäßige Backups der Supabase-Datenbank und der n8n-Volume-Daten erstellen.
 
 ---

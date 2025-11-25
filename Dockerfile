@@ -24,6 +24,7 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/app/generated ./app/generated
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
+COPY prisma.config.js ./prisma.config.js
 CMD ["sh", "-c", "npx prisma migrate deploy --schema=prisma/schema.prisma || echo 'Prisma migrate skipped (will not block app start)'; node server.js"]
 
 

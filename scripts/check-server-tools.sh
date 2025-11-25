@@ -101,18 +101,36 @@ ensure_git() {
 }
 
 ensure_node_stack() {
-  if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
-    log "Node.js & npm gefunden ($(node --version 2>/dev/null), $(npm --version 2>/dev/null))."
+  local required_major=20
+  local node_ok=0
+
+  if command -v node >/dev/null 2>&1; then
+    local major
+    major="$(node -p "process.versions.node.split('.')[0]" 2>/dev/null || echo 0)"
+    if [[ "$major" -ge "$required_major" ]] && command -v npm >/dev/null 2>&1; then
+      log "Node.js & npm gefunden ($(node --version 2>/dev/null), $(npm --version 2>/dev/null))."
+      node_ok=1
+    else
+      warn "Node.js-Version zu alt ($(node --version 2>/dev/null)) oder npm fehlt – aktualisiere auf ${required_major}.x."
+    fi
+  fi
+
+  if [[ "$node_ok" -eq 1 ]]; then
     return
   fi
 
-  log "Node.js/npm fehlen – versuche Installation."
+  log "Installiere Node.js ${required_major}.x + npm …"
   if [[ "$PKG_MANAGER" == "apt" ]]; then
-    apt_install nodejs npm
+    if ! command -v curl >/dev/null 2>&1; then
+      apt_install curl
+    fi
+    curl -fsSL "https://deb.nodesource.com/setup_${required_major}.x" | sudo -E bash -
+    apt_install nodejs
   elif [[ "$PKG_MANAGER" == "brew" ]]; then
-    brew_install node
+    brew_install "node@${required_major}"
+    brew link --overwrite "node@${required_major}" >/dev/null 2>&1 || true
   else
-    warn "Bitte installiere Node.js manuell: https://nodejs.org/"
+    warn "Bitte installiere Node.js ${required_major}.x manuell: https://nodejs.org/"
     exit 1
   fi
 }
