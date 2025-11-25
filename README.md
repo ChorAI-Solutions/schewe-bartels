@@ -172,7 +172,7 @@ docker compose -f docker/supabase/docker-compose.yml \
 
 ### 6.3 Direkter Postgres-Zugriff (n8n DB-Node, Prisma, BI-Tools)
 
-`scripts/ensure-app-db-user.sh` erzeugt nach jedem `make supabase-up` automatisch den App-Benutzer (`APP_DB_USER` / `APP_DB_PASSWORD`) und vergibt die notwendigen Rechte auf `APP_DB_NAME`. Die Verbindung läuft über den offenen Port `POSTGRES_DIRECT_PORT` (Standard 54324) ohne TLS.
+`scripts/ensure-app-db-user.sh` erzeugt nach jedem `make supabase-up` automatisch den App-Benutzer (`APP_DB_USER` / `APP_DB_PASSWORD`) und vergibt die notwendigen Rechte auf `APP_DB_NAME` – inklusive `USAGE/CREATE` auf dem Schema `public`, damit CREATE TABLE/ALTER TABLE aus n8n oder Prisma funktionieren. Die Verbindung läuft über den offenen Port `POSTGRES_DIRECT_PORT` (Standard 54324) ohne TLS.
 
 | Feld                       | Wert / Herkunft                                    |
 |----------------------------|----------------------------------------------------|

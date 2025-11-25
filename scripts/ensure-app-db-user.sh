@@ -61,6 +61,7 @@ BEGIN
   END IF;
 
   EXECUTE format('GRANT ALL PRIVILEGES ON DATABASE %I TO %I', target_db, role_name);
+  EXECUTE format('GRANT USAGE, CREATE ON SCHEMA public TO %I', role_name);
   EXECUTE format('GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO %I', role_name);
   EXECUTE format('GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO %I', role_name);
   EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO %I', role_name);
