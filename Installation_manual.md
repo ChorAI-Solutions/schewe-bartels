@@ -23,11 +23,15 @@ make setup-prod
 - `make setup-prod` spiegelt die Werte automatisch nach `docker/supabase/.env`.
 
 ### 1.3 Supabase initialisieren
-- Einmalig ausführen, damit Automationen DB-Benutzer, Extensions, Tabellen (`documents_pg`) und das `match_documents`-RPC herstellen:
+- Einmalig ausführen, damit Automationen DB-Benutzer, Extensions, Tabellen (`documents_pg`), das `match_documents`-RPC sowie das Storage-Bucket `n8nRAG` (inkl. Policies) herstellen:
   ```bash
   make supabase-up
   ```
 - Das Script `scripts/bootstrap-supabase-vector.sh` läuft dabei automatisch; bei Bedarf lässt es sich später separat neu starten.
+- `scripts/ensure-supabase-storage-resources.sh` erzeugt/aktualisiert das Bucket `n8nRAG`, setzt es auf „public“ und legt RLS-Policies für öffentliche Downloads und authentifizierte Uploads an – somit funktionieren Uploads/Downloads direkt nach dem Start.
+- `scripts/ensure-app-db-user.sh` liest `APP_DB_USER`, `APP_DB_PASSWORD` und `APP_DB_NAME` aus der `.env`, legt den Benutzer bei Bedarf an und vergibt sämtliche Rechte auf DB, Schema, Tabellen, Sequenzen sowie Default-Privileges – es sind keine manuellen SQL-Befehle nötig.
+- `scripts/ensure-supabase-storage-path.sh` erzeugt den Host-Pfad `docker/supabase/volumes/storage` inklusive `.gitkeep`, falls er fehlt (z. B. nach einem frischen Clone).
+- **Wichtig:** Bevor die Services starten, sicherstellen, dass der Ordner `docker/supabase/volumes/storage` existiert (Repo enthält eine `.gitkeep`). Falls er gelöscht wurde, einfach `mkdir -p docker/supabase/volumes/storage` ausführen – sonst kann Supabase Storage keine Dateien schreiben.
 
 ### 1.4 Produktions-Stack starten
 ```bash
@@ -88,6 +92,8 @@ make setup       # Scope=dev
    # oder
    make dev-n8n      # zusätzlich lokales n8n auf 5678
    ```
+- Supabase Storage verwendet den Host-Pfad `docker/supabase/volumes/storage`. Sollte dieser Ordner fehlen (z. B. nach `rm -rf`), erneut `mkdir -p docker/supabase/volumes/storage` ausführen, bevor Uploads getestet werden (das macht `make supabase-up` automatisch).
+- Das Storage-Bucket `n8nRAG` samt Policies wird beim Aufruf von `make supabase-up` erstellt und ist damit auch lokal sofort einsatzbereit; gleichzeitig werden `documents_pg`, `match_documents` sowie der App-DB-User aus `.env` eingerichtet.
 
 ### 2.3 Lokale Endpunkte testen
 - App: <http://localhost:3000>
@@ -113,4 +119,5 @@ docker compose --profile dev --profile n8n down
 - Betone Sicherheitsschritte: Austausch aller Default-Keys/Tokens und Verwendung von `X-Admin-Token` bei API-Aufrufen.
 
 Damit lassen sich Prod- und Dev-Umgebungen jederzeit reproduzierbar aufsetzen und filmen.
+
 
