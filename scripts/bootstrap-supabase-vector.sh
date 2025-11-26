@@ -106,3 +106,4 @@ SQL
 echo "[supabase-vector] Vector-Store ist bereit."
 
 
+

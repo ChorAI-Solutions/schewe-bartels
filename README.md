@@ -249,6 +249,7 @@ postgresql://APP_DB_USER:APP_DB_PASSWORD@sb-ai-test.dakatos.online:54324/APP_DB_
 | Admin-Token testen                  | `curl -H "X-Admin-Token: $ADMIN_TOKEN" https://<SITE_DOMAIN>/api/admin/ping` |
 | Supabase Basic Auth (Kong)          | `DASHBOARD_USERNAME` / `DASHBOARD_PASSWORD` |
 | n8n Daten sichern                   | Volume: `/var/lib/docker/volumes/ai-test_n8n-data/_data` (z. B. per `rsync`) |
+| Supabase DB-Config sichern          | Volume: `/var/lib/docker/volumes/supabase_db-config/_data` – `make supabase-up` übernimmt vorhandene Daten automatisch |
 
 ---
 

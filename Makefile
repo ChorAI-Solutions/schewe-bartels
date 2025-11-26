@@ -77,6 +77,8 @@ setup-prod:
 	@$(COMPOSE) $(PROD_PROFILES) $(N8N_PROFILE) pull n8n caddy
 	@echo "🚀 Starte prod + n8n Stack frisch (inkl. Web-Rebuild) …"
 	@$(COMPOSE) $(PROD_PROFILES) $(N8N_PROFILE) up -d --build --pull always
+	@echo "🚀 Starte Supabase-Stack inkl. Migrationen …"
+	@$(MAKE) --no-print-directory supabase-up
 
 clean-prod:
 	@echo "🧹 Stoppe laufende prod/n8n-Container (n8n-Daten bleiben erhalten)."
@@ -174,9 +176,12 @@ supabase-up:
 		echo "⚠️  $(SUPABASE_ENV_FILE) fehlt. Kopiere docker/supabase/.env.example und passe sie an."; \
 		exit 1; \
 	fi
+	@bash scripts/ensure-supabase-storage-path.sh
+	@bash scripts/ensure-supabase-db-config.sh
 	$(SUPABASE_COMPOSE) --env-file $(SUPABASE_ENV_FILE) up -d
 	@bash scripts/ensure-app-db-user.sh
 	@bash scripts/bootstrap-supabase-vector.sh
+	@bash scripts/ensure-supabase-storage-resources.sh
 
 supabase-down:
 	@if [ ! -f $(SUPABASE_ENV_FILE) ]; then \
