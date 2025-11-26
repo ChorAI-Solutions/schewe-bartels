@@ -176,6 +176,7 @@ supabase-up:
 	fi
 	$(SUPABASE_COMPOSE) --env-file $(SUPABASE_ENV_FILE) up -d
 	@bash scripts/ensure-app-db-user.sh
+	@bash scripts/bootstrap-supabase-vector.sh
 
 supabase-down:
 	@if [ ! -f $(SUPABASE_ENV_FILE) ]; then \

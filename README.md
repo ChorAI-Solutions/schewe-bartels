@@ -12,6 +12,24 @@ Alle Bausteine werden über Makefile-Targets gestartet. Diese Anleitung führt d
 
 ---
 
+## Inhaltsverzeichnis
+
+- [1. Voraussetzungen](#1-voraussetzungen)
+- [2. Dev-Setup in 5 Schritten](#2-dev-setup-in-5-schritten)
+- [3. Prod-Setup (Server)](#3-prod-setup-server)
+- [4. Dienste & Ports (Überblick)](#4-dienste--ports-überblick)
+- [5. Supabase & Credentials](#5-supabase--credentials)
+  - [5.1 Internes n8n (Container aus diesem Projekt)](#61-internes-n8n-container-aus-diesem-projekt)
+  - [5.2 Externes n8n (anderer Server oder Cloud)](#62-externes-n8n-anderer-server-oder-cloud)
+  - [5.3 Direkter Postgres-Zugriff (n8n DB-Node, Prisma, BI-Tools)](#63-direkter-postgres-zugriff-n8n-db-node-prisma-bi-tools)
+  - [5.4 Vector Store & RAG-Setup](#54-vector-store--rag-setup)
+- [6. n8n ↔ Supabase (Credentials)](#6-n8n--supabase-credentials)
+- [7. Häufige Workflows](#7-häufige-workflows)
+- [8. Sicherheit & Best Practices](#8-sicherheit--best-practices)
+- [9. Fresh-Install & Smoke-Test Checkliste](#9-fresh-install--smoke-test-checkliste)
+
+---
+
 ## 1. Voraussetzungen
 
 - Docker Desktop (macOS/Windows) oder Docker Engine + Compose Plugin (Linux)
@@ -143,8 +161,39 @@ Backups:
 ```bash
 docker compose -f docker/supabase/docker-compose.yml \
   --env-file docker/supabase/.env exec db \
-  pg_dump -U postgres ai-test-prod-db > backup.sql
+  pg_dump -U postgres aiTestProdDB > backup.sql
 ```
+
+---
+
+### 5.4 Vector Store & RAG-Setup
+
+Damit der Supabase-Stack sofort als Vektor-Datenbank funktioniert (n8n „Supabase Vector Store“-Node, `match_documents`-RPC, etc.), passiert beim ersten `make supabase-up` automatisch Folgendes:
+
+1. `scripts/ensure-app-db-user.sh` legt den App-User (`APP_DB_USER`) an und vergibt Rechte.
+2. Direkt danach sorgt `scripts/bootstrap-supabase-vector.sh` für alle AI-spezifischen Bausteine:
+   - erzwingt das Schema `extensions` inklusive `vector`- und `uuid-ossp`-Extension,
+   - erstellt (idempotent) die Tabelle `public.documents_pg` samt IVFFlat-Index,
+   - spielt `supase-configs/createMatchFunction.sql` ein (`match_documents` mit optionalem JSONB-Filter),
+   - setzt `search_path` für `anon`, `authenticated` und `service_role` auf `public, extensions`,
+   - vergibt alle nötigen Grants (Schema `extensions`, Tabelle/Sequence `documents_pg`).
+3. Der Vorgang ist wiederholbar: `bash scripts/bootstrap-supabase-vector.sh`.
+4. Anpassungen am Retrieval (z. B. Schwellenwert, Filterlogik) nimmst du ausschließlich in `supase-configs/createMatchFunction.sql` vor und führst anschließend `make supabase-up` (oder das Script) erneut aus.
+5. Smoke-Test (nachdem `make supabase-up` einmal durchgelaufen ist):
+   ```bash
+   EMBED=$(docker compose -f docker/supabase/docker-compose.yml \
+     --env-file docker/supabase/.env exec -T db \
+     psql -U supabase_admin -d ${APP_DB_NAME:-aiTestProdDB} -Atqc \
+     "select embedding::text from documents_pg limit 1;")
+   curl -sS -H "apikey: $SERVICE_ROLE_KEY" \
+        -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
+        -H "Content-Type: application/json" \
+        -X POST http://localhost:8000/rest/v1/rpc/match_documents \
+        -d "{\"query_embedding\":$EMBED,\"match_count\":2,\"filter\":{}}"
+   ```
+   Wenn zwei Treffer zurückkommen, ist Supabase für RAG bereit – genau so greift n8n später auch zu.
+
+💡 Wichtig: Ein frisch geklonter Server benötigt lediglich `make setup` / `make setup-prod` **und anschließend einmal `make supabase-up`**, damit alle Automatisierungen ihre Arbeit erledigen. Danach funktionieren Storage-Buckets, `match_documents` und n8n-Vector-Workflows ohne manuelle Schritte.
 
 ---
 
@@ -178,7 +227,7 @@ docker compose -f docker/supabase/docker-compose.yml \
 |----------------------------|----------------------------------------------------|
 | **Host**                   | `SUPABASE_DOMAIN` (z. B. `sb-ai-test.dakatos.online`) |
 | **Port**                   | `POSTGRES_DIRECT_PORT` (Default `54324`)           |
-| **Database**               | `APP_DB_NAME` (Default `ai-test-prod-db`)          |
+| **Database**               | `APP_DB_NAME` (Default `aiTestProdDB`)          |
 | **User / Password**        | `APP_DB_USER` / `APP_DB_PASSWORD`                  |
 | **SSL**                    | `Disable` bzw. `Allow` + „Ignore SSL Issues“       |
 
@@ -210,6 +259,37 @@ postgresql://APP_DB_USER:APP_DB_PASSWORD@sb-ai-test.dakatos.online:54324/APP_DB_
 - `AUTH_DISABLED` nur in der lokalen Entwicklung auf `true`.
 - Firewalls so konfigurieren, dass nur Ports 80/443 (und optional 5678 sowie dein direkter DB-Port, Standard 54324) öffentlich sind.
 - Regelmäßige Backups der Supabase-Datenbank und der n8n-Volume-Daten erstellen.
+
+---
+
+## 9. Fresh-Install & Smoke-Test Checkliste
+
+Diese Kurzliste stellt sicher, dass auch unerfahrene User das Template fehlerfrei starten können:
+
+1. **Repository klonen & Setup ausführen**
+   ```bash
+   git clone <repo> /var/www/ai-test
+   cd /var/www/ai-test
+   make setup            # lokal
+   # oder
+   make setup-prod       # Server
+   ```
+2. **Supabase einmalig initialisieren**
+   ```bash
+   make supabase-up
+   ```
+   Dadurch laufen `ensure-app-db-user` und `bootstrap-supabase-vector` automatisch und stellen alle Rechte, Extensions, Tabellen und RPCs her.
+3. **Optional: Testaufrufe**
+   - `curl http://localhost:8000/storage/v1/bucket` (Service-Role-Key) ⇒ sollte JSON liefern.
+   - Obiger `match_documents`-Test.
+4. **App-/n8n-Stack starten**
+   ```bash
+   make dev            # lokale Entwicklung
+   # oder
+   make prod-all       # kompletter Server-Stack inkl. Supabase
+   ```
+
+Wenn alle vier Punkte erfolgreich waren, ist der Stand identisch mit der hier getesteten Umgebung und n8n kann sofort auf die Vector-DB zugreifen.
 
 ---
 

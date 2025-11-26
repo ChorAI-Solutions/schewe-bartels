@@ -36,7 +36,7 @@ PASS_ESC="$(escape_sql "$APP_DB_PASSWORD")"
 DB_ESC="$(escape_sql "$APP_DB_NAME")"
 
 for _ in {1..30}; do
-  if $COMPOSE_CMD exec db pg_isready -U postgres -h localhost >/dev/null 2>&1; then
+  if $COMPOSE_CMD exec db pg_isready >/dev/null 2>&1; then
     ready=1
     break
   fi
@@ -48,7 +48,10 @@ if [[ "${ready:-0}" -ne 1 ]]; then
   exit 1
 fi
 
-$COMPOSE_CMD exec -T db psql -U postgres <<SQL
+DB_OWNER="$($COMPOSE_CMD exec -T db psql -U postgres -d postgres -Atqc "SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '${DB_ESC}' LIMIT 1;" 2>/dev/null | tr -d '\r')"
+DB_SUPERUSER="${DB_OWNER:-${POSTGRES_SUPERUSER:-${POSTGRES_USER:-postgres}}}"
+
+$COMPOSE_CMD exec -T db psql -U "$DB_SUPERUSER" -d "$APP_DB_NAME" <<SQL
 DO \$\$
 DECLARE
   role_name text := '${ROLE_ESC}';

@@ -66,12 +66,12 @@
         "mode": "insert",
         "tableName": {
           "__rl": true,
-          "value": "AiWissensdatenbank",
+          "value": "aiTestProdDB",
           "mode": "list",
-          "cachedResultName": "AiWissensdatenbank"
+          "cachedResultName": "aiTestProdDB"
         },
         "options": {
-          "queryName": "matchAiWissensDB"
+          "queryName": "matchAiTestProdDB"
         }
       },
       "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
