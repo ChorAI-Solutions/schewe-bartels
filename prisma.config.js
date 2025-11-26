@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { defineConfig } = require("@prisma/config");
 
 const datasourceUrl = process.env.DATABASE_URL;

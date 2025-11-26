@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import ReactMarkdown, { type Components } from "react-markdown";
 
 interface Message {
   id: string;
@@ -8,6 +9,56 @@ interface Message {
   sender: "user" | "bot";
   timestamp: Date;
 }
+
+const createMarkdownComponents = (variant: "user" | "bot"): Components => ({
+  p(props) {
+    return (
+      <p
+        {...props}
+        className="mb-2 whitespace-pre-wrap leading-relaxed last:mb-0"
+      />
+    );
+  },
+  a(props) {
+    return (
+      <a
+        {...props}
+        target="_blank"
+        rel="noreferrer"
+        className={`underline decoration-dotted ${
+          variant === "user"
+            ? "text-blue-200 hover:text-blue-100"
+            : "text-blue-600 hover:text-blue-500 dark:text-blue-300"
+        }`}
+      />
+    );
+  },
+  img(props) {
+    const { alt, ...rest } = props;
+    const resolvedAlt =
+      typeof alt === "string" && alt.trim().length > 0
+        ? alt
+        : "Externer Bildinhalt";
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        {...rest}
+        alt={resolvedAlt}
+        loading="lazy"
+        className="mt-2 max-h-48 w-full rounded-md border border-zinc-200 object-contain dark:border-zinc-700"
+      />
+    );
+  },
+  ul(props) {
+    return <ul {...props} className="mb-2 list-disc space-y-1 pl-4 last:mb-0" />;
+  },
+  ol(props) {
+    return <ol {...props} className="mb-2 list-decimal space-y-1 pl-4 last:mb-0" />;
+  },
+  li(props) {
+    return <li {...props} className="leading-relaxed" />;
+  },
+});
 
 export default function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([
@@ -196,7 +247,13 @@ export default function Chatbot() {
                       : "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                  <div className="text-sm [&_strong]:font-semibold">
+                    <ReactMarkdown
+                      components={createMarkdownComponents(message.sender)}
+                    >
+                      {message.text}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               </div>
             ))}
