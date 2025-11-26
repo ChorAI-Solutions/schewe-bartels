@@ -3,5 +3,6 @@ volumes/storage/*
 volumes/storage/**/*
 !volumes/storage/.gitkeep
 .env
+!.env.example
 test.http
 docker-compose.override.yml
