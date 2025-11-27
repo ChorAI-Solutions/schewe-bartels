@@ -25,7 +25,7 @@
       "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
       "typeVersion": 1,
       "position": [
-        2032,
+        2448,
         1280
       ]
     },
@@ -198,7 +198,7 @@
       "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
       "position": [
-        1296,
+        1712,
         864
       ]
     },
@@ -219,7 +219,7 @@
       "type": "n8n-nodes-base.summarize",
       "typeVersion": 1,
       "position": [
-        1504,
+        1920,
         944
       ]
     },
@@ -329,7 +329,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1792,
+        2208,
         784
       ],
       "id": "0fdb43ce-19d0-4f21-93bf-6cc697022274",
@@ -576,7 +576,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1296,
+        1712,
         1040
       ],
       "id": "ed42137c-97fe-4bd0-bc48-20772ffa280e",
@@ -670,7 +670,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1984,
+        2400,
         784
       ],
       "id": "333f9c4d-ddfd-4d66-9ef8-b1bb72544387",
@@ -912,7 +912,7 @@
       "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
       "typeVersion": 1,
       "position": [
-        2032,
+        2448,
         1424
       ],
       "id": "861380c0-4153-4c92-94c6-d7fa976698e1",
@@ -949,7 +949,7 @@
       "type": "@n8n/n8n-nodes-langchain.code",
       "typeVersion": 1,
       "position": [
-        1536,
+        1952,
         1312
       ],
       "id": "523d151f-1aa8-41ae-a7e9-fde8ac5db8c1",
@@ -1162,7 +1162,7 @@
         "descriptionType": "manual",
         "toolDescription": "Given a file ID, fetches the text from the document.",
         "operation": "executeQuery",
-        "query": "SELECT \n    string_agg(text, ' ') as document_text\nFROM documents_pg\n  WHERE metadata->>'file_id' = $1\nGROUP BY metadata->>'file_id';",
+        "query": "SELECT \n    string_agg(content, ' ') as document_text\nFROM documents_pg\n  WHERE metadata->>'file_id' = $1\nGROUP BY metadata->>'file_id';",
         "options": {
           "queryReplacement": "={{ $fromAI('file_id') }}"
         }
@@ -1185,7 +1185,7 @@
     {
       "parameters": {
         "descriptionType": "manual",
-        "toolDescription": "Run a SQL query - use this to query from the document_rows table once you know the file ID you are querying. dataset_id is the file_id and you are always using the row_data for filtering, which is a jsonb field that has all the keys from the file schema given in the document_metadata table.\n\nExample query:\n\nSELECT AVG((row_data->>'revenue')::numeric)\nFROM document_rows\nWHERE dataset_id = '123';\n\nExample query 2:\n\nSELECT \n    row_data->>'category' as category,\n    SUM((row_data->>'sales')::numeric) as total_sales\nFROM dataset_rows\nWHERE dataset_id = '123'\nGROUP BY row_data->>'category';",
+        "toolDescription": "=Run a SQL query - use this to query from the document_rows table once you know the file ID you are querying. dataset_id is the file_id and you are always using the row_data for filtering, which is a jsonb field that has all the keys from the file schema given in the document_metadata table.\n\nExample query:\n\nSELECT AVG((row_data->>'revenue')::numeric)\nFROM document_rows\nWHERE dataset_id = '123';\n\nExample query 2:\n\nSELECT \n    row_data->>'category' as category,\n    SUM((row_data->>'sales')::numeric) as total_sales\nFROM dataset_rows\nWHERE dataset_id = '123'\nGROUP BY row_data->>'category';",
         "operation": "executeQuery",
         "query": "{{ $fromAI('sql_query') }}",
         "options": {}
@@ -1213,7 +1213,7 @@
       "typeVersion": 1,
       "position": [
         1504,
-        608
+        624
       ],
       "id": "fa3a241f-2c1a-4237-8a32-d9eee0a6167a",
       "name": "Reranker Cohere1",
@@ -1270,8 +1270,7 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "c3610ed8-98bd-4b66-89fa-52425d45c051",
-        "authentication": "headerAuth",
+        "path": "3ab3644a-f33a-41bd-91d8-cd6e58a49a6c",
         "responseMode": "responseNode",
         "options": {}
       },
@@ -1328,7 +1327,7 @@
       "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
       "typeVersion": 1.3,
       "position": [
-        1936,
+        2352,
         1056
       ],
       "id": "7df1fa16-2214-4a5a-9d62-ce498af6b3f2",
@@ -1389,7 +1388,7 @@
       "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
       "typeVersion": 1.2,
       "position": [
-        1312,
+        1728,
         624
       ],
       "id": "d2c732f8-5ad5-4132-b0f1-d6df5c3ae03f",
@@ -1457,9 +1456,166 @@
           "name": "Supabase-API selfhosted"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Alle Items holen\nconst items = $input.all();\n\n// Gesamten Markdown-Text zusammenführen\nlet fullText = \"\";\n\nfor (const item of items) {\n  if (item.json.markdown) {\n    if (Array.isArray(item.json.markdown)) {\n      fullText += item.json.markdown.join(\" \") + \" \";\n    } else {\n      fullText += item.json.markdown + \" \";\n    }\n  }\n}\n\nfullText = fullText.trim();\n\n// Wörter zählen\nconst wordCount = fullText.split(/\\s+/).filter(Boolean).length;\n\n// Zeichen zählen\nconst charCount = fullText.length;\n\n// Token grob schätzen (1 Token ≈ 4 Zeichen)\nconst estimatedTokens = Math.ceil(charCount / 4);\n\n// Kosten berechnen (1 Mio Tokens = 0,40 €)\nconst pricePerMillion = 0.40;\nconst estimatedCost = (estimatedTokens / 1_000_000) * pricePerMillion;\n\n// Ergebnis zurückgeben\nreturn [{\n  json: {\n    wortanzahl: wordCount,\n    zeichenanzahl: charCount,\n    geschaetzte_tokens: estimatedTokens,\n    kosten_euro: Number(estimatedCost.toFixed(6)),\n    kosten_cent: +(estimatedCost * 100).toFixed(4)\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1504,
+        1312
+      ],
+      "id": "a9581b3a-70f2-46e7-af4a-554ddac457c5",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": {
+          "__rl": true,
+          "value": "documents_pg",
+          "mode": "list",
+          "cachedResultName": "documents_pg"
+        },
+        "options": {
+          "queryName": "match_documents"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        1952,
+        1520
+      ],
+      "id": "4d0897bf-427d-406d-ba0c-00c3e76fdf7a",
+      "name": "Supabase Vector Store1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "QqlImjx7TFvnIgOD",
+          "name": "Supabase-API selfhosted"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "textSplittingMode": "custom",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        2096,
+        1664
+      ],
+      "id": "87dde16f-ee53-4fc7-9a34-4bbe3116cb2b",
+      "name": "Default Data Loader1"
+    },
+    {
+      "parameters": {
+        "chunkSize": 800,
+        "chunkOverlap": 300,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        2192,
+        1824
+      ],
+      "id": "756b7932-5e05-44fe-8633-45ea264c8c88",
+      "name": "Recursive Character Text Splitter1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1920,
+        1744
+      ],
+      "id": "1a8a3468-b5f1-456c-8336-c88878b1d1ea",
+      "name": "Embeddings OpenAI1",
+      "credentials": {
+        "openAiApi": {
+          "id": "LjQ5aJMSkH6PVQhJ",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a7b52737-85bf-41f0-8bb1-5316dca5b462",
+              "leftValue": "={{ $json.kosten_euro }}",
+              "rightValue": 5,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1696,
+        1344
+      ],
+      "id": "6bfbc88c-a0d9-4953-bc4f-4746afded2dc",
+      "name": "PriceCheck 5€"
     }
   ],
-  "pinData": {},
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n-ai-test.dakatos.online",
+            "user-agent": "node",
+            "content-length": "288",
+            "accept": "*/*",
+            "accept-encoding": "br, gzip, deflate",
+            "accept-language": "*",
+            "content-type": "application/json",
+            "sec-fetch-mode": "cors",
+            "via": "1.1 Caddy",
+            "x-forwarded-for": "172.18.0.1",
+            "x-forwarded-host": "n8n-ai-test.dakatos.online",
+            "x-forwarded-proto": "https"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "chatInput": "Kannst Du mir auch ein Bild vom Bike zeigen",
+            "action": "sendMessage",
+            "sessionId": "f951d201-f1eb-41dc-aebb-c9b1b53dab80",
+            "metadata": {
+              "url": "/",
+              "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
+            }
+          },
+          "webhookUrl": "https://n8n-ai-test.dakatos.online/webhook/3ab3644a-f33a-41bd-91d8-cd6e58a49a6c",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
   "connections": {
     "Default Data Loader": {
       "ai_document": [
@@ -1748,7 +1904,7 @@
       "main": [
         [
           {
-            "node": "LangChain Code",
+            "node": "Code in JavaScript",
             "type": "main",
             "index": 0
           }
@@ -1969,14 +2125,77 @@
           }
         ]
       ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "PriceCheck 5€",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader1": {
+      "ai_document": [
+        [
+          {
+            "node": "Supabase Vector Store1",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter1": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader1",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store1",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PriceCheck 5€": {
+      "main": [
+        [
+          {
+            "node": "LangChain Code",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Supabase Vector Store1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "3478e8c5-fa16-4989-baba-be96cda96f72",
+  "versionId": "86708cb7-e9a4-456f-ada9-f722d50eb6f5",
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "85f46842b7362d4d50da2a9e53a370bd3970fc12f5adeb44087284c40ee454be"
   },
   "id": "H5XP9BZn4fhhCEd7",
