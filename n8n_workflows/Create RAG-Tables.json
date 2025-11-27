@@ -1,0 +1,75 @@
+{
+  "name": "Create RAG-Tables",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Run Each Node Once to Set Up Database Tables",
+        "height": 300,
+        "width": 680,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -448,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "c5153d58-f7ce-488a-9545-d7b252f65666",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE TABLE document_metadata (\n    id TEXT PRIMARY KEY,\n    title TEXT,\n    url TEXT,\n    created_at TIMESTAMP DEFAULT NOW(),\n    schema TEXT\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -336,
+        96
+      ],
+      "id": "2a8aa5d4-e3af-41c6-929e-067d1c338f5b",
+      "name": "Create Document Metadata Table",
+      "credentials": {
+        "postgres": {
+          "id": "safcm5oCM7iLGdq0",
+          "name": "Postgres Supabase selfhosted"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE TABLE document_rows (\n    id SERIAL PRIMARY KEY,\n    dataset_id TEXT REFERENCES document_metadata(id),\n    row_data JSONB  -- Store the actual row data\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -32,
+        96
+      ],
+      "id": "5ee0eacc-a847-43df-a2bd-9da11c899464",
+      "name": "Create Document Rows Table (for Tabular Data)",
+      "credentials": {
+        "postgres": {
+          "id": "safcm5oCM7iLGdq0",
+          "name": "Postgres Supabase selfhosted"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "0435d51a-7c0a-4907-8abf-ba1a7e2bb1b8",
+  "meta": {
+    "instanceId": "85f46842b7362d4d50da2a9e53a370bd3970fc12f5adeb44087284c40ee454be"
+  },
+  "id": "exxVSFt1kGpJwzka",
+  "tags": []
+}

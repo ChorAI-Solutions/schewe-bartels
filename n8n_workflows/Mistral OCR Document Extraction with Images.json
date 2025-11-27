@@ -258,6 +258,9 @@
       ],
       "id": "a0662547-fa1e-4d7a-9d4a-71b41527cc4a",
       "name": "Image Upload Supabase",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "maxTries": 5,
       "credentials": {
         "supabaseApi": {
           "id": "QqlImjx7TFvnIgOD",
@@ -467,7 +470,7 @@
           "id": "1QfPQgch0m0G0KS8V5LZEdemTID651xRl",
           "title": "E-Bike Wartungsanleitung und Daten.pdf",
           "url": "https://drive.google.com/file/d/1QfPQgch0m0G0KS8V5LZEdemTID651xRl/view?usp=drivesdk",
-          "created_at": "2025-11-25T23:28:13.301Z",
+          "created_at": "2025-11-26T17:14:47.368Z",
           "schema": null
         },
         "binary": {
@@ -672,7 +675,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "2b4dcf5a-8f88-431c-b746-4d4221f2a1f0",
+  "versionId": "ae23914b-5194-46dd-8652-34a20f067ff4",
   "meta": {
     "instanceId": "85f46842b7362d4d50da2a9e53a370bd3970fc12f5adeb44087284c40ee454be"
   },
