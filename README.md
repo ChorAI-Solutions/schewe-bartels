@@ -145,6 +145,7 @@ Alle Container befinden sich im internen Docker-Netzwerk; externe Zugriffe laufe
 ## 5. Supabase & Credentials
 
 - `make setup` / `make setup-prod` synchronisiert automatisch die Werte aus `.env` nach `docker/supabase/.env` (Ports, DB-Name, Passwörter).
+- `make setup-prod` erweitert den Dialog um die Supabase-spezifischen Secrets und erzeugt im Anschluss frische JWT-basierte Keys (`JWT_SECRET`, `ANON_KEY`, `SERVICE_ROLE_KEY`), sofern noch Platzhalter aktiv sind.
 - Nach dem Setup unbedingt sensible Defaults ersetzen:
   - `ANON_KEY`, `SERVICE_ROLE_KEY`
   - `JWT_SECRET`, `VAULT_ENC_KEY`, `PG_META_CRYPTO_KEY`

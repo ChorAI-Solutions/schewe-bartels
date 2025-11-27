@@ -59,7 +59,7 @@ setup: setup-dev
 
 setup-dev:
 	@SETUP_ENV_SCOPE=dev $(SETUP_SCRIPT)
-	@node scripts/setup-supabase-env.cjs
+	@SETUP_ENV_SCOPE=dev node scripts/setup-supabase-env.cjs
 	@if [ "$(RESET_DB_VOLUME_ON_SETUP)" = "true" ]; then \
 		$(MAKE) --no-print-directory reset-dev-db-volume; \
 	else \
@@ -70,7 +70,7 @@ setup-dev:
 setup-prod:
 	@$(SERVER_CHECK_SCRIPT)
 	@SETUP_ENV_SCOPE=prod $(SETUP_SCRIPT)
-	@node scripts/setup-supabase-env.cjs
+	@SETUP_ENV_SCOPE=prod node scripts/setup-supabase-env.cjs
 	@$(MAKE) --no-print-directory post-setup
 	@$(MAKE) --no-print-directory clean-prod
 	@echo "⬇️  Ziehe Basis-Images für prod + n8n …"
