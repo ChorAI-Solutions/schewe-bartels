@@ -1,0 +1,157 @@
+{
+  "name": "chatbot-webhook-responses",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chatbot-responses",
+        "responseMode": "responseNode",
+        "options": {
+          "responseContentType": "application/json",
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -480,
+        0
+      ],
+      "id": "720ed7f6-54a9-4948-ab02-75b07daa4610",
+      "name": "Webhook (Chatbot)",
+      "webhookId": "2f1b54d2-44ef-4ec2-a832-a0af795882b2"
+    },
+    {
+      "parameters": {
+        "functionCode": "const headers = Object.fromEntries(Object.entries($json.headers ?? {}).map(([key, value]) => [key.toLowerCase(), value]));\nconst incomingToken = headers[\"x-admin-token\"] ?? \"\";\nconst expectedToken = getEnv('ADMIN_TOKEN') || '';\nif (expectedToken && incomingToken !== expectedToken) {\n  throw new Error('Admin-Token fehlt oder ist ungültig.');\n}\n\nconst body = $json.body ?? {};\nconst message = body.message ?? body.chatInput ?? body.prompt ?? '';\nif (!message) {\n  throw new Error('Es wurde keine Nachricht im Request gefunden.');\n}\nconst context = body.context ?? '';\nconst sessionId = body.sessionId ?? headers['x-session-id'] ?? ($json.query?.sessionId ?? new Date().toISOString());\n\nconst promptSections = [\n  '# Rolle',\n  'Du bist der AI-Coach des AAM Lehrgangs. Antworte kurz, präzise und bleibe freundlich.',\n  '# Nutzerfrage',\n  message.toString().trim()\n];\n\nif (context) {\n  promptSections.push('# Kontext');\n  promptSections.push(context.toString().trim());\n}\n\npromptSections.push('# Ausgabe');\npromptSections.push('Antworte auf Deutsch, maximal acht Sätze, nenne konkrete nächste Schritte.');\n\nreturn [\n  {\n    json: {\n      prompt: promptSections.join('\\n\\n'),\n      sessionId,\n      metadata: {\n        headers\n      }\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        -272,
+        0
+      ],
+      "id": "b83515a5-d4c0-4f25-8f13-b980ea18284d",
+      "name": "Prompt vorbereiten"
+    },
+    {
+      "parameters": {
+        "url": "https://api.openai.com/v1/responses",
+        "method": "POST",
+        "jsonParameters": true,
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.OPENAI_API_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "responseFormat": "json",
+          "fullResponse": true
+        },
+        "bodyParametersJson": "={{ JSON.stringify({ model: 'gpt-4.1-mini', input: $json.prompt, metadata: { sessionId: $json.sessionId }, temperature: 0.2, top_p: 0.9, max_output_tokens: 600 }) }}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        0
+      ],
+      "id": "7bf78490-615f-4f2a-a9db-9b48bdb75adc",
+      "name": "OpenAI Responses API"
+    },
+    {
+      "parameters": {
+        "functionCode": "const response = $json.body ?? $json;\nconst outputs = Array.isArray(response.output) ? response.output : [];\nlet reply = response.output_text ?? '';\n\nfor (const item of outputs) {\n  if (item.type === 'message' && Array.isArray(item.content)) {\n    const textPart = item.content.find((chunk) => chunk.type === 'output_text' && chunk.text);\n    if (textPart) {\n      reply = textPart.text;\n      break;\n    }\n  }\n}\n\nif (!reply) {\n  const bodyText = Array.isArray(response.content)\n    ? response.content.map((entry) => entry.text).filter(Boolean).join('\\n')\n    : '';\n  reply = bodyText || 'Ich konnte leider keine Antwort generieren.';\n}\n\nconst sessionId = $node['Prompt vorbereiten'].json.sessionId;\n\nreturn [\n  {\n    json: {\n      reply,\n      sessionId,\n      responseId: response.id ?? null,\n      model: response.model ?? 'gpt-4.1-mini',\n      usage: response.usage ?? {},\n      rawResponse: response\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        160,
+        0
+      ],
+      "id": "5f4f5fa4-04dc-4a12-885c-21cca705b6e8",
+      "name": "Antwort extrahieren"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  \"reply\": $json.reply,\n  \"sessionId\": $json.sessionId,\n  \"model\": $json.model,\n  \"usage\": $json.usage,\n  \"responseId\": $json.responseId\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        384,
+        0
+      ],
+      "id": "3fe61ef5-d858-43c7-8ddf-a1d99ef04051",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook (Chatbot)": {
+      "main": [
+        [
+          {
+            "node": "Prompt vorbereiten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prompt vorbereiten": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Responses API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Responses API": {
+      "main": [
+        [
+          {
+            "node": "Antwort extrahieren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Antwort extrahieren": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "4f7b6c77-4afd-4f35-9350-66f74fd9b5c5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "85f46842b7362d4d50da2a9e53a370bd3970fc12f5adeb44087284c40ee454be"
+  },
+  "id": "j78A3wL2UjLu3o9F",
+  "tags": []
+}
+
