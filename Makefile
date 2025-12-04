@@ -1,4 +1,4 @@
-.PHONY: help pull dev dev-n8n dev-down dev-restart dev-logs env-dev rebuild-dev prod prod-n8n prod-down prod-restart prod-logs env-prod rebuild-prod n8n-logs update-n8n lint type format studio migrate setup setup-dev setup-prod setup-env post-setup switch-remote bootstrap-remote reset-dev-db-volume clean-prod supabase-up supabase-down supabase-restart supabase-logs supabase-reset clean-docker
+.PHONY: help pull dev dev-n8n dev-down dev-restart dev-logs env-dev rebuild-dev prod prod-n8n prod-down prod-restart prod-logs env-prod rebuild-prod n8n-logs update-n8n n8n-update lint type format studio migrate setup setup-dev setup-prod setup-env post-setup switch-remote bootstrap-remote reset-dev-db-volume clean-prod supabase-up supabase-down supabase-restart supabase-update supabase-logs supabase-reset clean-docker
 
 COMPOSE ?= docker compose
 SUPABASE_COMPOSE ?= docker compose -f docker/supabase/docker-compose.yml
@@ -38,9 +38,11 @@ help:
 	@echo "  make rebuild-prod  - Baut web ohne Cache neu und startet das prod-Profil"
 	@echo "  make n8n-logs      - Folgt den Logs von n8n (falls gestartet)"
 	@echo "  make update-n8n    - Holt das neueste n8n-Image und startet den Container neu"
+	@echo "  make n8n-update    - Alias für update-n8n"
 	@echo "  make supabase-up   - Startet den Supabase-Stack (docker/supabase)"
 	@echo "  make supabase-down - Stoppt den Supabase-Stack"
 	@echo "  make supabase-restart - Restart Supabase-Services"
+	@echo "  make supabase-update - Pullt Supabase-Images und startet sie neu"
 	@echo "  make supabase-logs - Zeigt Logs des Supabase-Stacks (konfigurierbar via SERVICE=name)"
 	@echo "  make supabase-reset - Führt docker/supabase/reset.sh aus (löscht Daten!)"
 	@echo "  make clean-docker  - Stoppt alle Container & entfernt Volumes (außer n8n-Daten)"
@@ -171,6 +173,8 @@ update-n8n:
 	$(COMPOSE) $(N8N_PROFILE) pull n8n
 	$(COMPOSE) $(N8N_PROFILE) up -d n8n
 
+n8n-update: update-n8n
+
 supabase-up:
 	@if [ ! -f $(SUPABASE_ENV_FILE) ]; then \
 		echo "⚠️  $(SUPABASE_ENV_FILE) fehlt. Kopiere docker/supabase/.env.example und passe sie an."; \
@@ -196,6 +200,14 @@ supabase-restart:
 		exit 1; \
 	fi
 	$(SUPABASE_COMPOSE) --env-file $(SUPABASE_ENV_FILE) restart
+
+supabase-update:
+	@if [ ! -f $(SUPABASE_ENV_FILE) ]; then \
+		echo "⚠️  $(SUPABASE_ENV_FILE) fehlt. Kopiere docker/supabase/.env.example und passe sie an."; \
+		exit 1; \
+	fi
+	$(SUPABASE_COMPOSE) --env-file $(SUPABASE_ENV_FILE) pull
+	@$(MAKE) --no-print-directory supabase-up
 
 supabase-logs:
 	@if [ ! -f $(SUPABASE_ENV_FILE) ]; then \
