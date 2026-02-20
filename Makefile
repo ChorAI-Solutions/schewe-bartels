@@ -1,4 +1,4 @@
-.PHONY: help pull dev dev-n8n dev-down dev-restart dev-logs env-dev rebuild-dev prod prod-n8n prod-down prod-restart prod-logs env-prod rebuild-prod n8n-logs update-n8n n8n-update lint type format studio migrate setup setup-dev setup-prod setup-env post-setup switch-remote bootstrap-remote reset-dev-db-volume clean-prod supabase-up supabase-down supabase-restart supabase-update supabase-logs supabase-reset clean-docker
+.PHONY: help pull dev dev-n8n dev-down dev-restart dev-logs env-dev rebuild-dev prod prod-n8n prod-down prod-restart prod-logs env-prod rebuild-prod n8n-logs update-n8n n8n-update check-updates health-check lint type format studio migrate setup setup-dev setup-prod setup-env post-setup switch-remote bootstrap-remote reset-dev-db-volume clean-prod supabase-up supabase-down supabase-restart supabase-update supabase-logs supabase-reset clean-docker
 
 COMPOSE ?= docker compose
 SUPABASE_COMPOSE ?= docker compose -f docker/supabase/docker-compose.yml
@@ -39,6 +39,8 @@ help:
 	@echo "  make n8n-logs      - Folgt den Logs von n8n (falls gestartet)"
 	@echo "  make update-n8n    - Holt das neueste n8n-Image und startet den Container neu"
 	@echo "  make n8n-update    - Alias für update-n8n"
+	@echo "  make check-updates - Prüft System-Updates (apt/brew) und Docker-Stack-Images"
+	@echo "  make health-check  - Prüft Web, n8n und Mailpit per HTTP (healthy)"
 	@echo "  make supabase-up   - Startet den Supabase-Stack (docker/supabase)"
 	@echo "  make supabase-down - Stoppt den Supabase-Stack"
 	@echo "  make supabase-restart - Restart Supabase-Services"
@@ -174,6 +176,12 @@ update-n8n:
 	$(COMPOSE) $(N8N_PROFILE) up -d n8n
 
 n8n-update: update-n8n
+
+check-updates:
+	@bash scripts/check-updates.sh
+
+health-check:
+	@bash scripts/health-check.sh
 
 supabase-up:
 	@if [ ! -f $(SUPABASE_ENV_FILE) ]; then \
