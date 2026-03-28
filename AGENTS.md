@@ -20,6 +20,41 @@ Dieser Leitfaden zeigt dir, wie du in diesem Projekt schrittweise einen Chat‑A
 ## Sicherheits‑Basics
 - Admin‑Endpoints (z. B. `/api/admin/*` und `/api/webhooks/n8n`) sind per Header `X-Admin-Token` geschützt.
 - Token in `.env` setzen (`ADMIN_TOKEN`) und in Requests mitschicken.
+- **n8n:** Image in `docker-compose.yml` fest pinnen und bei Sicherheitshinweisen des Herstellers zeitnah anheben (siehe [n8n Security Advisories](https://github.com/n8n-io/n8n/security/advisories)); danach `make update-n8n` bzw. `docker compose --profile n8n pull n8n` und Container neu starten.
+
+## Wartung, Updates & Serverlast (für Agenten)
+
+**Ziel:** Der Host darf nicht durch parallele oder zu große Jobs überlastet werden (RAM/I/O, dpkg‑Lock, Instabilität). Vorgehen **schrittweise** („peu à peu“).
+
+**Verbindliche Projektregel für Cursor:** `.cursor/rules/server-operations-safety.mdc` (`alwaysApply`).
+
+### Was du nicht tun sollst
+- Nicht gleichzeitig auf demselben Server anstoßen: großes `apt upgrade`, mehrere schwere `docker pull`, `docker compose up --build` und weitere CPU-/I/O‑intensive Tasks.
+- Kein zweites `apt`/`dpkg`, solange ein anderes läuft (Lock warten).
+- Keine „alles in einem Rutsch“-Shells mit mehreren Hintergrundjobs für Wartung.
+
+### Empfohlene Reihenfolge (Produktion / kleiner Server)
+1. **Nur prüfen, nicht installieren:** zuerst Last runterfahren oder ruhiges Fenster wählen.
+2. **System getrennt von Docker:**  
+   - `make check-updates-system` (listet verfügbare Pakete; führt **kein** `apt upgrade` aus).  
+   - Pause, dann **manuell** `sudo apt-get upgrade -y` (ein Lauf, zu Ende warten).  
+3. **Docker Images:**  
+   - Entweder `make check-updates-docker` **nach** dem System-Upgrade und einer Pause, **oder** noch schonender:  
+   - `make check-updates-pull-one SERVICE=n8n` (dann z. B. `caddy`, `mailpit`, `web-dev` nacheinander).  
+4. **Container mit neuen Images:** z. B. `make prod-n8n` / `make update-n8n` je nach Profil – nicht parallel zum nächsten großen Pull.  
+5. **Health:** `make health-check` (Web, n8n, Mailpit per HTTP).
+
+### Make‑Targets & Skript
+| Aktion | Befehl |
+|--------|--------|
+| Hilfe (Optionen + Warnhinweise) | `bash scripts/check-updates.sh --help` |
+| Standard (System-Liste + Docker‑Pull nacheinander, mit Hinweis) | `make check-updates` |
+| Nur System-Update-Liste | `make check-updates-system` |
+| Nur alle Compose‑Images pullen | `make check-updates-docker` |
+| Ein Service einzeln pullen | `make check-updates-pull-one SERVICE=n8n` |
+| HTTP‑Health | `make health-check` |
+
+Das Skript `scripts/check-updates.sh` installiert **keine** System-Pakete; es aktualisiert nur den Paketindex (apt/brew) zum Auflisten bzw. zieht Docker‑Images.
 
 ## Aktueller Stand im Repo
 - Next.js (App Router) mit Tailwind
@@ -141,7 +176,7 @@ model MessageLog {
 ---
 
 ## Testing & Troubleshooting
-- Health: `http://localhost:3000/api/health`
+- Health: `http://localhost:3000/api/health` oder `make health-check`
 - Token‑Check: `/api/admin/ping` (Header `X-Admin-Token`)
 - n8n Basic‑Auth: in `.env` setzen und ggf. `docker compose restart n8n`
 - Mailpit (lokal): `http://localhost:8025` (für Einladungen/Resets, falls User‑Management aktiv)
@@ -151,6 +186,7 @@ model MessageLog {
 ---
 
 ## Cursor – sinnvolle Prompts
+- „Führe Wartung auf dem Server aus: strikt schrittweise laut AGENTS.md (keine parallelen schweren Jobs); zuerst `make check-updates-system`, Pause, dann Docker einzeln oder `make check-updates-docker`, danach `make health-check`.“
 - „Implementiere eine neue Route `app/api/chat/route.ts`, die Body `{message}` akzeptiert, `requireAdminToken` nutzt und an `process.env.N8N_WEBHOOK_URL` proxyt. Tests via cURL hinzufügen.“
 - „Erstelle `app/chat/page.tsx` mit einfachem Formular (Textarea + Button), das `/api/chat` aufruft und die Antwort rendert.“
 - „Füge eine Admin‑Route zum Erstellen von Blogposts hinzu (`/api/admin/blog/create`) inkl. Zod‑Validierung.“
@@ -169,6 +205,12 @@ model MessageLog {
 ```bash
 # Stack bauen & starten
 docker compose up -d --build
+
+# Wartung schrittweise (Details: Abschnitt „Wartung, Updates & Serverlast“)
+make check-updates-system      # nur System-Updates listen
+make check-updates-docker      # nur Docker-Images pullen (nach Pause)
+make check-updates-pull-one SERVICE=n8n   # einzelner Service, am schonendsten
+make health-check
 
 # Logs
 docker compose logs -f web

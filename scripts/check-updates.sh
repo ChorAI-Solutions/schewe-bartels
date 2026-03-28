@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Prüft verfügbare System-Updates (apt/brew) und Docker-Stack-Images.
-# Aufruf: scripts/check-updates.sh [--system-only|--docker-only]
+# Prüft System-Updates (apt/brew) und Docker-Stack-Images.
+# Schrittweise nutzen, um den Server nicht zu überlasten (siehe --help).
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-MODE="${1:-all}"
+MODE="all"
+pullOneService=""
+
+COMPOSE_PULL_PROFILES=(--profile dev --profile prod --profile n8n)
 
 log() {
   printf '[check-updates] %s\n' "$1"
@@ -14,6 +17,59 @@ log() {
 
 warn() {
   printf '[check-updates] WARN: %s\n' "$1" >&2
+}
+
+print_usage() {
+  cat <<'EOF'
+Verwendung: check-updates.sh [OPTION]
+
+  (ohne Option)     Zuerst System-Check, dann Docker-Pull (I/O-intensiv).
+  --system-only     Nur Paketindex + Liste verfügbarer System-Updates (kein Upgrade).
+  --docker-only     Nur docker compose pull (alle relevanten Profile).
+  --docker-pull-one SERVICE
+                    Nur ein Compose-Service pullen (weniger Last auf einmal).
+                    Beispiel: check-updates.sh --docker-pull-one n8n
+  -h, --help        Diese Hilfe.
+
+Sicherheit / Serverlast (wichtig):
+  • Kein paralleles zweites apt oder großer Build während dieses Skripts.
+  • Auf kleinen Servern: --system-only ausführen, warten, später --docker-only
+    oder mehrere Läufe mit --docker-pull-one (z. B. n8n, dann caddy, dann mailpit).
+  • Dieses Skript installiert keine System-Pakete; apt upgrade manuell separat.
+EOF
+}
+
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -h | --help)
+        print_usage
+        exit 0
+        ;;
+      --system-only)
+        MODE="system-only"
+        shift
+        ;;
+      --docker-only)
+        MODE="docker-only"
+        shift
+        ;;
+      --docker-pull-one)
+        if [[ -z "${2:-}" ]]; then
+          echo "[check-updates] Fehler: --docker-pull-one benötigt einen Service-Namen (z. B. n8n)." >&2
+          exit 1
+        fi
+        pullOneService="$2"
+        MODE="docker-pull-one"
+        shift 2
+        ;;
+      *)
+        echo "[check-updates] Unbekannte Option: $1" >&2
+        print_usage >&2
+        exit 1
+        ;;
+    esac
+  done
 }
 
 detect_package_manager() {
@@ -44,7 +100,7 @@ check_system_updates_apt() {
   if [[ "$count" -gt 20 ]]; then
     echo "  … und $((count - 20)) weitere (apt list --upgradable)."
   fi
-  echo "  → Installation: sudo apt-get upgrade -y"
+  echo "  → Installation separat und zu ruhiger Zeit: sudo apt-get upgrade -y"
 }
 
 check_system_updates_brew() {
@@ -63,7 +119,7 @@ check_system_updates_brew() {
   if [[ "$count" -gt 20 ]]; then
     echo "  … und $((count - 20)) weitere (brew outdated)."
   fi
-  echo "  → Installation: brew upgrade"
+  echo "  → Installation separat: brew upgrade"
 }
 
 check_system_updates() {
@@ -81,21 +137,12 @@ check_system_updates() {
   fi
 }
 
-check_docker_stack_updates() {
-  if ! command -v docker >/dev/null 2>&1; then
-    warn "Docker nicht gefunden – überspringe Stack-Check."
-    return 0
-  fi
-  if ! docker compose version >/dev/null 2>&1; then
-    warn "Docker Compose nicht verfügbar – überspringe Stack-Check."
-    return 0
-  fi
-  log "Docker-Stack: Prüfe auf neue Images (pull) …"
+docker_compose_pull_all() {
   cd "$REPO_ROOT"
   local out
-  if out="$(docker compose --profile dev --profile prod --profile n8n pull 2>&1)"; then
+  if out="$(docker compose "${COMPOSE_PULL_PROFILES[@]}" pull 2>&1)"; then
     if echo "$out" | grep -q "Downloaded newer image"; then
-      log "Neue Images wurden heruntergeladen. Neustart mit: make prod-n8n bzw. make dev-n8n"
+      log "Neue Images wurden heruntergeladen. Neustart z. B.: make prod-n8n / make dev-n8n"
       echo "$out" | grep "Downloaded newer image" || true
     else
       log "Docker-Stack: Alle Images sind aktuell."
@@ -107,26 +154,83 @@ check_docker_stack_updates() {
   fi
 }
 
+docker_compose_pull_one() {
+  local serviceName="$1"
+  cd "$REPO_ROOT"
+  log "Docker: pull nur Service '${serviceName}' …"
+  local out
+  if out="$(docker compose "${COMPOSE_PULL_PROFILES[@]}" pull "$serviceName" 2>&1)"; then
+    if echo "$out" | grep -q "Downloaded newer image"; then
+      log "Neues Image für '${serviceName}' geladen."
+      echo "$out" | grep "Downloaded newer image" || true
+    else
+      log "Service '${serviceName}': bereits aktuell oder kein Remote-Image."
+    fi
+  else
+    warn "Pull für '${serviceName}' fehlgeschlagen."
+    echo "$out" >&2
+    return 1
+  fi
+}
+
+check_docker_stack_updates() {
+  if ! command -v docker >/dev/null 2>&1; then
+    warn "Docker nicht gefunden – überspringe Stack-Check."
+    return 0
+  fi
+  if ! docker compose version >/dev/null 2>&1; then
+    warn "Docker Compose nicht verfügbar – überspringe Stack-Check."
+    return 0
+  fi
+  log "Docker-Stack: Prüfe auf neue Images (pull, kann I/O-intensiv sein) …"
+  docker_compose_pull_all
+}
+
+hint_low_resource_servers() {
+  log "Hinweis: Bei wenig RAM/CPU lieber schrittweise:"
+  log "  1) $0 --system-only  → warten  2) $0 --docker-only"
+  log "  oder: $0 --docker-pull-one n8n (und weitere Services einzeln)."
+  log "Nicht parallel zu apt upgrade, großen Builds oder zweitem Pull ausführen."
+}
+
 run_checks() {
   case "$MODE" in
-    --system-only)
+    system-only)
       check_system_updates
       ;;
-    --docker-only)
+    docker-only)
       check_docker_stack_updates
       ;;
+    docker-pull-one)
+      check_docker_stack_updates_for_one
+      ;;
     all)
+      hint_low_resource_servers
+      echo ""
       check_system_updates
       echo ""
       check_docker_stack_updates
       ;;
     *)
-      echo "Verwendung: $0 [--system-only|--docker-only]" >&2
-      echo "  Ohne Option: System-Updates und Docker-Stack prüfen." >&2
+      print_usage >&2
       exit 1
       ;;
   esac
 }
+
+check_docker_stack_updates_for_one() {
+  if ! command -v docker >/dev/null 2>&1; then
+    warn "Docker nicht gefunden."
+    return 1
+  fi
+  if ! docker compose version >/dev/null 2>&1; then
+    warn "Docker Compose nicht verfügbar."
+    return 1
+  fi
+  docker_compose_pull_one "$pullOneService"
+}
+
+parse_args "$@"
 
 log "Starte Update-Prüfung (Modus: ${MODE}) …"
 run_checks

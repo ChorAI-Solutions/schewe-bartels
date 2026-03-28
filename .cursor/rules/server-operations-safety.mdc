@@ -1,0 +1,24 @@
+---
+description: Keine Server-Überlastung – Wartung und Updates schrittweise (prod)
+alwaysApply: true
+---
+
+# Server- und Wartungs-Sicherheit
+
+Der Host darf **nicht** durch parallele oder zu große Operationen überlastet werden (OOM, I/O-Sturm, dpkg-Lock-Konflikte, Abstürze). Vorgehen **peu à peu** (kleinschrittig).
+
+## Für den Agenten
+
+- **Keine „Alles auf einmal“-Batches** auf demselben Server: z. B. nicht gleichzeitig `apt-get upgrade`, mehrere große `docker pull`, `docker compose up --build` und lange Hintergrundjobs anstoßen.
+- **Serialisieren:** Eine schwere Operation nach der anderen; erst Erfolg/Freigabe, dann nächster Schritt.
+- **Keine unnötigen Parallelstarts:** Keine mehreren Shells mit jeweils CPU-/RAM-intensiven Tasks ohne triftigen Grund.
+- **Pausen:** Nach großen Pulls/Upgrades kurz warten, dann Status prüfen (`docker compose ps`, Health-URL), bevor der nächste Schritt folgt.
+- **Images einzeln (bei knappen Ressourcen):** Statt eines riesigen `pull` ggf. pro Service: `docker compose pull <service>` nacheinander.
+- **Build sparsam:** `docker compose build` / `up --build` nur wenn nötig; nicht zusätzlich zu vollem System-Upgrade in derselben Minute starten, wenn der Host klein ist.
+- **Vorsicht bei Locks:** Wenn `apt`/`dpkg` läuft, kein zweites `apt` starten – warten oder den Nutzer informieren.
+- **Projekt-Hilfsmittel:** `scripts/check-updates.sh --help`; schonend: `make check-updates-system`, `make check-updates-docker`, `make check-updates-pull-one SERVICE=n8n`.
+
+## Für den Nutzer (manuell)
+
+- Wartungsfenster einplanen; nach Updates einzeln: System → dann Docker → dann Health-Check.
+- Bei Instabilität: Monitoring (RAM, Load, Disk), und Schritte weiter zerlegen.

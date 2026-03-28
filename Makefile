@@ -1,4 +1,4 @@
-.PHONY: help pull dev dev-n8n dev-down dev-restart dev-logs env-dev rebuild-dev prod prod-n8n prod-down prod-restart prod-logs env-prod rebuild-prod n8n-logs update-n8n n8n-update check-updates health-check lint type format studio migrate setup setup-dev setup-prod setup-env post-setup switch-remote bootstrap-remote reset-dev-db-volume clean-prod supabase-up supabase-down supabase-restart supabase-update supabase-logs supabase-reset clean-docker
+.PHONY: help pull dev dev-n8n dev-down dev-restart dev-logs env-dev rebuild-dev prod prod-n8n prod-down prod-restart prod-logs env-prod rebuild-prod n8n-logs update-n8n n8n-update check-updates check-updates-system check-updates-docker check-updates-pull-one health-check lint type format studio migrate setup setup-dev setup-prod setup-env post-setup switch-remote bootstrap-remote reset-dev-db-volume clean-prod supabase-up supabase-down supabase-restart supabase-update supabase-logs supabase-reset clean-docker
 
 COMPOSE ?= docker compose
 SUPABASE_COMPOSE ?= docker compose -f docker/supabase/docker-compose.yml
@@ -39,7 +39,10 @@ help:
 	@echo "  make n8n-logs      - Folgt den Logs von n8n (falls gestartet)"
 	@echo "  make update-n8n    - Holt das neueste n8n-Image und startet den Container neu"
 	@echo "  make n8n-update    - Alias für update-n8n"
-	@echo "  make check-updates - Prüft System-Updates (apt/brew) und Docker-Stack-Images"
+	@echo "  make check-updates - System + Docker-Images prüfen (siehe scripts/check-updates.sh --help)"
+	@echo "  make check-updates-system  - Nur System-Updates listen (weniger Last)"
+	@echo "  make check-updates-docker   - Nur docker compose pull (schrittweise Alternative)"
+	@echo "  make check-updates-pull-one SERVICE=n8n - Einzelnen Service pullen (am schonendsten)"
 	@echo "  make health-check  - Prüft Web, n8n und Mailpit per HTTP (healthy)"
 	@echo "  make supabase-up   - Startet den Supabase-Stack (docker/supabase)"
 	@echo "  make supabase-down - Stoppt den Supabase-Stack"
@@ -179,6 +182,16 @@ n8n-update: update-n8n
 
 check-updates:
 	@bash scripts/check-updates.sh
+
+check-updates-system:
+	@bash scripts/check-updates.sh --system-only
+
+check-updates-docker:
+	@bash scripts/check-updates.sh --docker-only
+
+check-updates-pull-one:
+	@[ -n "$(strip $(SERVICE))" ] || (echo "Nutze: make check-updates-pull-one SERVICE=n8n (oder caddy, mailpit, web-dev …)"; exit 1)
+	@bash scripts/check-updates.sh --docker-pull-one $(SERVICE)
 
 health-check:
 	@bash scripts/health-check.sh
