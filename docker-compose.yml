@@ -56,7 +56,7 @@ services:
       - internal
 
   n8n:
-    image: n8nio/n8n:2.14.2
+    image: n8nio/n8n:2.15.0
     profiles:
       - n8n
     environment:
