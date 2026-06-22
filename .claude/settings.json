@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(sudo apt-get upgrade -y)",
-      "Bash(sudo reboot)"
+      "Bash(sudo reboot)",
+      "Bash(apt list *)",
+      "Bash(sudo unattended-upgrade --dry-run -d)"
     ]
   }
 }
