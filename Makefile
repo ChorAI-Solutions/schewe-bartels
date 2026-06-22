@@ -175,8 +175,7 @@ n8n-logs:
 	$(COMPOSE) logs -f n8n
 
 update-n8n:
-	$(COMPOSE) $(N8N_PROFILE) pull n8n
-	$(COMPOSE) $(N8N_PROFILE) up -d n8n
+	@bash scripts/update-n8n.sh
 
 n8n-update: update-n8n
 
