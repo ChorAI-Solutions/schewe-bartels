@@ -7,6 +7,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# Lade Umgebungsvariablen aus .env
+if [ -f "$REPO_ROOT/.env" ]; then
+  set -a
+  source "$REPO_ROOT/.env"
+  set +a
+fi
+
 log() { printf '[scheduled-maintenance] %s\n' "$1"; }
 
 send_telegram() {
@@ -30,7 +37,7 @@ main() {
   cd "$REPO_ROOT"
 
   log "Starte automatische Wartung …"
-  send_telegram "🔧 <b>Automatische Wartung gestartet</b> - $(date '+%d.%m.%Y %H:%M:%S')"
+  send_telegram "🔧 <b>[hezner-schewe-bartels] Automatische Wartung gestartet</b>$(printf '\n')$(date '+%d.%m.%Y %H:%M:%S')"
 
   # System-Check (ohne Installation)
   log "Schritt 1/3: Prüfe System-Updates …"
@@ -51,7 +58,7 @@ main() {
   bash scripts/update-n8n.sh || true
 
   log "Automatische Wartung abgeschlossen."
-  send_telegram "✅ <b>Wartung erfolgreich abgeschlossen</b> - $(date '+%d.%m.%Y %H:%M:%S')"
+  send_telegram "✅ <b>[hezner-schewe-bartels] Wartung erfolgreich abgeschlossen</b>$(printf '\n')$(date '+%d.%m.%Y %H:%M:%S')"
 }
 
 main "$@"
