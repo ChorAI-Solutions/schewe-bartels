@@ -5,8 +5,39 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 COMPOSE_FILE="$REPO_ROOT/docker-compose.yml"
 
+# Lade Umgebungsvariablen aus .env
+if [ -f "$REPO_ROOT/.env" ]; then
+  set -a
+  source "$REPO_ROOT/.env"
+  set +a
+fi
+
 log() { printf '[update-n8n] %s\n' "$1"; }
 die() { printf '[update-n8n] FEHLER: %s\n' "$1" >&2; exit 1; }
+
+send_telegram() {
+  local message="$1"
+  local telegram_bot_token="${TELEGRAM_BOT_TOKEN:-}"
+  local telegram_chat_id="${TELEGRAM_CHAT_ID:-}"
+
+  if [[ -z "$telegram_bot_token" ]] || [[ -z "$telegram_chat_id" ]]; then
+    return
+  fi
+
+  curl -s -X POST "https://api.telegram.org/bot${telegram_bot_token}/sendMessage" \
+    -d "chat_id=${telegram_chat_id}" \
+    -d "text=${message}" \
+    -d "parse_mode=HTML" \
+    > /dev/null 2>&1 || true
+}
+
+on_error() {
+  local line=$1
+  log "FEHLER in Zeile $line - Update fehlgeschlagen"
+  send_telegram "❌ <b>[hezner-schewe-bartels] n8n UPDATE FEHLGESCHLAGEN</b>$(printf '\n\n')⚠️ FEHLER:$(printf '\n')━━━━━━━━━━━━━━━━━━━━━━$(printf '\n')Zeile: $line$(printf '\n')Skript: update-n8n.sh$(printf '\n\n')⏰ Zeitstempel: $(date '+%d.%m.%Y %H:%M:%S')$(printf '\n\n')📋 Bitte manuell prüfen!"
+}
+
+trap 'on_error $LINENO' ERR
 
 # Neueste stabile n8n-Version von Docker Hub holen (ohne 'latest'-Tag)
 fetch_latest_version() {
@@ -62,6 +93,9 @@ main() {
     exit 0
   fi
 
+  # Start-Benachrichtigung
+  send_telegram "🚀 <b>[hezner-schewe-bartels] n8n Update gestartet</b>$(printf '\n\n')📦 Von: n8nio/n8n:${current}$(printf '\n')Zu: n8nio/n8n:${latest}"
+
   log "Update: ${current} → ${latest}"
   # docker-compose.yml in-place aktualisieren
   sed -i "s|n8nio/n8n:${current}|n8nio/n8n:${latest}|g" "$COMPOSE_FILE"
@@ -75,6 +109,9 @@ main() {
   docker compose --profile n8n up -d n8n
 
   log "n8n erfolgreich auf ${latest} aktualisiert."
+
+  # Success-Benachrichtigung
+  send_telegram "✅ <b>[hezner-schewe-bartels] n8n UPDATE ERFOLGREICH</b>$(printf '\n\n')📦 VERSIONS-INFO:$(printf '\n')━━━━━━━━━━━━━━━━━━━━━━$(printf '\n')Von: n8nio/n8n:${current}$(printf '\n')Zu: n8nio/n8n:${latest}$(printf '\n\n')🔧 STATUS:$(printf '\n')━━━━━━━━━━━━━━━━━━━━━━$(printf '\n')Container: ✅ Neugestartet$(printf '\n')Datenbank: Online$(printf '\n\n')⏰ Zeitstempel: $(date '+%d.%m.%Y %H:%M:%S')"
 }
 
 main
